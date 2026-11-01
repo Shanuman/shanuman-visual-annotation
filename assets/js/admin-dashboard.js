@@ -266,7 +266,8 @@
 		);
 	};
 
-	const rootNode = document.getElementById( 'wp-va-admin-app' );
+	// Attach strictly to the renamed frontend wrapper ID
+	const rootNode = document.getElementById( 'shanuman-va-admin-app' );
 	if ( rootNode ) wp.element.render( wp.element.createElement( AdminDashboard ), rootNode );
 
 } )( wp );

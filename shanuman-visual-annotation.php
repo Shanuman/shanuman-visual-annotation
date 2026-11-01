@@ -67,7 +67,8 @@ class Shanuman_Visual_Annotation {
      * Automatically logs feedback creation or thread deletion events when post status changes.
      */
     public function log_post_status_change( $new_status, $old_status, $post ) {
-        if ( $post->post_type !== 'shanuman_va_annotation' ) return;
+        // Updated to use the <= 20 char limit slug
+        if ( $post->post_type !== 'shanuman_pin' ) return;
         if ( $old_status === 'new' && $new_status === 'publish' ) {
             $snippet = wp_trim_words( $post->post_content, 8, '...' );
             $this->log_action( "New feedback thread created (#{$post->ID}): \"{$snippet}\"" );
@@ -83,7 +84,7 @@ class Shanuman_Visual_Annotation {
         if ( isset( $_POST['shanuman_va_reset_plugin_submit'] ) && check_admin_referer( 'shanuman_va_reset_action_nonce', 'shanuman_va_reset_nonce' ) ) {
             if ( current_user_can( 'manage_options' ) ) {
                 $annotations = get_posts( [
-                    'post_type'      => 'shanuman_va_annotation',
+                    'post_type'      => 'shanuman_pin', // Corrected slug
                     'posts_per_page' => -1,
                     'post_status'    => 'any',
                 ] );
@@ -112,6 +113,7 @@ class Shanuman_Visual_Annotation {
             <h1>Shanuman Visual Annotation</h1>
             <p>Manage and review all client feedback and annotation threads left across your website.</p>
             
+            <!-- React targets this exact ID to render the dashboard -->
             <div id="shanuman-va-admin-app"><p>Loading dashboard...</p></div>
 
             <hr style="margin: 40px 0 20px 0;" />
@@ -141,7 +143,8 @@ class Shanuman_Visual_Annotation {
      * Registers the hidden Custom Post Type for annotations and associated REST-compatible metadata.
      */
     public function register_cpt_and_meta() {
-        register_post_type( 'shanuman_va_annotation', [
+        // CPT slug must be <= 20 chars. 'shanuman_pin' replaces 'shanuman_va_annotation'
+        register_post_type( 'shanuman_pin', [
             'label'               => 'Annotations',
             'public'              => false,
             'show_ui'             => false,
@@ -164,7 +167,7 @@ class Shanuman_Visual_Annotation {
         ];
 
         foreach ( $meta_keys as $key => $type ) {
-            register_post_meta( 'shanuman_va_annotation', $key, [
+            register_post_meta( 'shanuman_pin', $key, [
                 'type'         => $type,
                 'single'       => true,
                 'show_in_rest' => true,
@@ -186,7 +189,7 @@ class Shanuman_Visual_Annotation {
         $pin_id = $request->get_param( 'id' );
         if ( $pin_id ) {
             $post = get_post( $pin_id );
-            if ( ! $post || $post->post_type !== 'shanuman_va_annotation' ) {
+            if ( ! $post || $post->post_type !== 'shanuman_pin' ) {
                 return false; 
             }
         }
@@ -297,7 +300,7 @@ class Shanuman_Visual_Annotation {
         }
 
         $args = [
-            'post_type'      => 'shanuman_va_annotation',
+            'post_type'      => 'shanuman_pin', // Corrected slug
             'posts_per_page' => -1,
             'post_status'    => 'any',
         ];
@@ -347,7 +350,7 @@ class Shanuman_Visual_Annotation {
         $post_id = wp_insert_post( [
             'post_title'   => 'Pin on ' . wp_date( 'M j, Y H:i' ),
             'post_content' => $comment,
-            'post_type'    => 'shanuman_va_annotation',
+            'post_type'    => 'shanuman_pin', // Corrected slug
             'post_status'  => 'publish',
             'post_author'  => get_current_user_id(),
         ] );
@@ -391,7 +394,7 @@ class Shanuman_Visual_Annotation {
     public function toggle_flag( $request ) {
         $post_id = absint( $request->get_param( 'id' ) );
         $post = get_post( $post_id );
-        if ( ! $post || $post->post_type !== 'shanuman_va_annotation' ) return new \WP_Error( 'invalid_id', 'Invalid ID.', [ 'status' => 404 ] );
+        if ( ! $post || $post->post_type !== 'shanuman_pin' ) return new \WP_Error( 'invalid_id', 'Invalid ID.', [ 'status' => 404 ] );
         
         $current = get_post_meta( $post_id, '_shanuman_va_flagged', true );
         $new_val = $current === 'true' ? 'false' : 'true';
