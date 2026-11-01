@@ -5,7 +5,7 @@
 	// Inject responsive styles and fade animations for administrative management
 	const adminStyle = document.createElement('style');
 	adminStyle.innerHTML = `
-		.wp-va-thread-item {
+		.shanuman-va-thread-item {
 			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 			transform-origin: top;
 			opacity: 1;
@@ -14,7 +14,7 @@
 			overflow: hidden;
 			margin-bottom: 20px;
 		}
-		.wp-va-thread-item.fade-out {
+		.shanuman-va-thread-item.fade-out {
 			opacity: 0;
 			transform: scaleY(0);
 			max-height: 0;
@@ -24,14 +24,14 @@
 			border: none;
 		}
 		@media(max-width: 782px) {
-			.wp-va-stats-container { flex-direction: column !important; gap: 15px !important; }
-			.wp-va-stats-container > div { border-left: none !important; padding-left: 0 !important; border-bottom: 1px solid #ccd0d4; padding-bottom: 15px; }
-			.wp-va-stats-container > div:last-child { border-bottom: none; padding-bottom: 0; }
-			.wp-va-controls-container { flex-direction: column; align-items: stretch !important; gap: 15px; }
-			.wp-va-controls-container > div { justify-content: flex-start !important; flex-wrap: wrap; }
-			.wp-va-pin-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
-			.wp-va-pin-actions { width: 100%; justify-content: flex-start !important; flex-wrap: wrap; }
-			.wp-va-reply-header { flex-direction: column; align-items: flex-start !important; gap: 8px; }
+			.shanuman-va-stats-container { flex-direction: column !important; gap: 15px !important; }
+			.shanuman-va-stats-container > div { border-left: none !important; padding-left: 0 !important; border-bottom: 1px solid #ccd0d4; padding-bottom: 15px; }
+			.shanuman-va-stats-container > div:last-child { border-bottom: none; padding-bottom: 0; }
+			.shanuman-va-controls-container { flex-direction: column; align-items: stretch !important; gap: 15px; }
+			.shanuman-va-controls-container > div { justify-content: flex-start !important; flex-wrap: wrap; }
+			.shanuman-va-pin-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+			.shanuman-va-pin-actions { width: 100%; justify-content: flex-start !important; flex-wrap: wrap; }
+			.shanuman-va-reply-header { flex-direction: column; align-items: flex-start !important; gap: 8px; }
 		}
 	`;
 	document.head.appendChild(adminStyle);
@@ -169,13 +169,13 @@
 
 		if ( loading ) return wp.element.createElement( 'div', { style: { padding: '20px' } }, wp.element.createElement( 'p', null, 'Loading feedback...' ) );
 
-		return wp.element.createElement( 'div', { className: 'wp-va-dashboard', style: { maxWidth: '900px', marginTop: '20px' } }, 
-			wp.element.createElement( 'div', { className: 'wp-va-stats-container', style: { display: 'flex', gap: '25px', background: '#fff', padding: '20px', border: '1px solid #ccd0d4', borderRadius: '4px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' } },
+		return wp.element.createElement( 'div', { className: 'shanuman-va-dashboard', style: { maxWidth: '900px', marginTop: '20px' } }, 
+			wp.element.createElement( 'div', { className: 'shanuman-va-stats-container', style: { display: 'flex', gap: '25px', background: '#fff', padding: '20px', border: '1px solid #ccd0d4', borderRadius: '4px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' } },
 				wp.element.createElement( 'div', null, wp.element.createElement( 'strong', { style: { color: totalUnread > 0 ? alertColor : '#1d2327', fontSize: '20px', display: 'block' } }, totalUnread ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Unread Replies' ) ),
 				wp.element.createElement( 'div', { style: { borderLeft: '1px solid #ccd0d4', paddingLeft: '25px' } }, wp.element.createElement( 'strong', { style: { fontSize: '20px', display: 'block', color: '#1d2327' } }, totalPending ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Pending Pins' ) ),
 				wp.element.createElement( 'div', { style: { borderLeft: '1px solid #ccd0d4', paddingLeft: '25px' } }, wp.element.createElement( 'strong', { style: { fontSize: '20px', display: 'block', color: '#1d2327' } }, totalResolved ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Approved' ) )
 			),
-			wp.element.createElement( 'div', { className: 'wp-va-controls-container', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' } },
+			wp.element.createElement( 'div', { className: 'shanuman-va-controls-container', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' } },
 				wp.element.createElement( 'div', { style: { display: 'flex', gap: '10px' } },
 					wp.element.createElement( 'button', { className: `button ${ activeTab === 'pending' ? 'button-primary' : '' }`, style: activeTab === 'pending' ? { backgroundColor: shanumanVaConfig.buttonColor, borderColor: shanumanVaConfig.buttonColor } : {}, onClick: () => setActiveTab( 'pending' ) }, 'Pending Feedback' ),
 					wp.element.createElement( 'button', { className: `button ${ activeTab === 'resolved' ? 'button-primary' : '' }`, style: activeTab === 'resolved' ? { backgroundColor: shanumanVaConfig.buttonColor, borderColor: shanumanVaConfig.buttonColor } : {}, onClick: () => setActiveTab( 'resolved' ) }, 'Approved' )
@@ -210,14 +210,14 @@
 							const isPosting = submittingReply[pin.id] || false;
 							const isFading = fadingOutId === pin.id;
 							
-							return wp.element.createElement( 'div', { key: pin.id, className: `wp-va-thread-item ${ isFading ? 'fade-out' : '' }`, style: { padding: '15px', borderLeft: `4px solid ${ threadBorderColor }`, background: '#f6f7f7', borderRadius: '0 4px 4px 0' } },
-								wp.element.createElement( 'div', { className: 'wp-va-pin-header', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' } },
+							return wp.element.createElement( 'div', { key: pin.id, className: `shanuman-va-thread-item ${ isFading ? 'fade-out' : '' }`, style: { padding: '15px', borderLeft: `4px solid ${ threadBorderColor }`, background: '#f6f7f7', borderRadius: '0 4px 4px 0' } },
+								wp.element.createElement( 'div', { className: 'shanuman-va-pin-header', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' } },
 									wp.element.createElement( 'div', { style: { fontSize: '13px', color: '#646970', display: 'flex', alignItems: 'center' } }, 
 										wp.element.createElement( 'strong', { style: { color: '#1d2327' } }, `Pin #${ pin.id }` ),
 										` \u2022 ${ pin.author_name } \u2022 ${ pin.date }`,
 										wp.element.createElement( FlagIcon, { isFlagged: pin.flagged, onClick: () => handleToggleFlag( pin.id ) } )
 									),
-									wp.element.createElement( 'div', { className: 'wp-va-pin-actions', style: { display: 'flex', gap: '10px' } },
+									wp.element.createElement( 'div', { className: 'shanuman-va-pin-actions', style: { display: 'flex', gap: '10px' } },
 										( ! isApproved ) && wp.element.createElement( 'a', { href: `${ pin.url }?wp_va_open_pin=${ pin.id }`, target: '_self', className: 'button button-link', style: { color: shanumanVaConfig.buttonColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' } }, 'View' ),
 										! isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.accentColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'approve' ) }, 'Approve' ),
 										isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.reopenColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'reopen' ) }, 'Reopen' ),
@@ -236,7 +236,7 @@
 										const badgeColor = isUnread ? alertColor : '#a7aaad';
 
 										return wp.element.createElement( 'div', { key: r.id, style: { marginBottom: '12px' } },
-											wp.element.createElement( 'div', { className: 'wp-va-reply-header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' } },
+											wp.element.createElement( 'div', { className: 'shanuman-va-reply-header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' } },
 												wp.element.createElement( 'div', { style: { fontSize: '12px', color: '#646970', display: 'flex', alignItems: 'center', flexWrap: 'wrap' } }, 
 													wp.element.createElement( 'strong', null, r.author_name ), wp.element.createElement( 'span', null, ` \u2022 ${ r.date }` ),
 													showBadge && wp.element.createElement( 'span', { 
@@ -266,7 +266,7 @@
 		);
 	};
 
-	// Attach strictly to the renamed frontend wrapper ID
+	// Attach strictly to the frontend wrapper ID
 	const rootNode = document.getElementById( 'shanuman-va-admin-app' );
 	if ( rootNode ) wp.element.render( wp.element.createElement( AdminDashboard ), rootNode );
 
