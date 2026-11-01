@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Shanuman Visual Annotation – Client Feedback & Review Tool
+ * Plugin Name: Shanuman Visual Annotation
  * Description: A lightweight visual feedback and annotation tool for WordPress.
  * Version: 1.0.0
  * Author: Shanuman
