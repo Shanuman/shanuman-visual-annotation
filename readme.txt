@@ -13,6 +13,7 @@ Let clients point, click, and comment directly on your website. A lightweight, p
 == Description ==
 
 **Shanuman Visual Annotation** is a streamlined, WordPress-native visual feedback tool built specifically for web developers, designers, and creative agencies. It allows you and your clients to leave comments directly on top of website elements, pinning feedback precisely where it belongs.
+
 Developer Note on Source Code: The JavaScript in this plugin (frontend-overlay.js and admin-dashboard.js) is written entirely in native Vanilla JS utilizing the native WordPress wp.element library directly. No build tools, Webpack, NPM, or minification processes are used. Development and raw source code can be found at: https://github.com/Shanuman/shanuman-visual-annotation 
 
 
