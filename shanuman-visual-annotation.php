@@ -1,22 +1,33 @@
 <?php
 /**
- * Plugin Name: Shanuman Visual Annotation
- * Description: A lightweight visual feedback, annotation and review tool for WordPress.
+ * Plugin Name: Shanuman Visual Annotation – Client Feedback & Review Tool
+ * Description: A lightweight visual feedback and annotation tool for WordPress.
  * Version: 1.0.0
- * Author: shanuman
+ * Author: Shanuman
  * Text Domain: shanuman-visual-annotation
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
+// Exit if accessed directly for security.
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * Class Shanuman_Visual_Annotation
+ * Core singleton controller managing backend registration, REST routes, and asset injection.
+ */
 class Shanuman_Visual_Annotation {
 
+    /** @var Shanuman_Visual_Annotation|null Single instance of the class. */
     private static $instance = null;
 
+    /**
+     * Retrieves the singleton instance.
+     * 
+     * @return Shanuman_Visual_Annotation
+     */
     public static function get_instance() {
         if ( null === self::$instance ) {
             self::$instance = new self();
@@ -24,6 +35,9 @@ class Shanuman_Visual_Annotation {
         return self::$instance;
     }
 
+    /**
+     * Constructor: Hooks into WordPress actions and initialization pipelines.
+     */
     private function __construct() {
         add_action( 'init', [ $this, 'register_cpt_and_meta' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
@@ -34,26 +48,33 @@ class Shanuman_Visual_Annotation {
         add_action( 'transition_post_status', [ $this, 'log_post_status_change' ], 10, 3 );
     }
 
+    /**
+     * Logs internal plugin activity for administrative auditing.
+     * 
+     * @param string $message The log entry message.
+     */
     public function log_action( $message ) {
-        $logs = get_option( 'shanuman_va_activity_log', [] );
-        $timestamp = current_time( 'Y-m-d H:i:s' );
+        $logs = get_option( 'shanuman_va_activity_log', [] );$timestamp = current_time( 'Y-m-d H:i:s' );
         array_unshift( $logs, "[{$timestamp}] {$message}" );
         if ( count( $logs ) > 50 ) {
-            $logs = array_slice( $logs, 0, 50 );
+            $logs = array_slice($logs, 0, 50 );
         }
         update_option( 'shanuman_va_activity_log', $logs );
     }
 
-    public function log_post_status_change( $new_status, $old_status, $post ) {
+    /**
+     * Automatically logs feedback creation or thread deletion events when post status changes.
+     */
+    public function log_post_status_change( $new_status, $old_status,$post ) {
         if ( $post->post_type !== 'shanuman_va_annotation' ) return;
-        if ( $old_status === 'new' && $new_status === 'publish' ) {
-            $snippet = wp_trim_words( $post->post_content, 8, '...' );
-            $this->log_action( "New feedback thread created (#{$post->ID}): \"{$snippet}\"" );
-        } elseif ( $old_status === 'publish' && $new_status === 'trash' ) {
-            $this->log_action( "Feedback thread deleted (#{$post->ID})." );
+        if ( $old_status === 'new' && $new_status === 'publish' ) {$snippet = wp_trim_words( $post->post_content, 8, '...' );$this->log_action( "New feedback thread created (#{$post->ID}): \"{$snippet}\"" );
+        } elseif ( $old_status === 'publish' && $new_status === 'trash' ) {$this->log_action( "Feedback thread deleted (#{$post->ID})." );
         }
     }
 
+    /**
+     * Handles administrator requests to factory-reset and clear all plugin data.
+     */
     public function handle_reset_action() {
         if ( isset( $_POST['shanuman_va_reset_plugin_submit'] ) && check_admin_referer( 'shanuman_va_reset_action_nonce', 'shanuman_va_reset_nonce' ) ) {
             if ( current_user_can( 'manage_options' ) ) {
@@ -62,7 +83,7 @@ class Shanuman_Visual_Annotation {
                     'posts_per_page' => -1,
                     'post_status'    => 'any',
                 ] );
-                foreach ( $annotations as $ann ) {
+                foreach ( $annotations as$ann ) {
                     wp_delete_post( $ann->ID, true ); 
                 }
                 update_option( 'shanuman_va_activity_log', [] );
@@ -73,6 +94,9 @@ class Shanuman_Visual_Annotation {
         }
     }
 
+    /**
+     * Renders the administrative review dashboard container and activity logs.
+     */
     public function render_admin_dashboard_content() {
         if ( ! current_user_can( 'edit_posts' ) ) {
             return;
@@ -92,7 +116,7 @@ class Shanuman_Visual_Annotation {
                 <?php if ( empty( $activity_logs ) ) : ?>
                     <span style="color: #646970;">No activity logged yet.</span>
                 <?php else : ?>
-                    <?php foreach ( $activity_logs as $log ) : ?>
+                    <?php foreach ( $activity_logs as$log ) : ?>
                         <div><?php echo esc_html( $log ); ?></div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -109,6 +133,9 @@ class Shanuman_Visual_Annotation {
         <?php
     }
 
+    /**
+     * Registers the hidden Custom Post Type for annotations and associated REST-compatible metadata.
+     */
     public function register_cpt_and_meta() {
         register_post_type( 'shanuman_va_annotation', [
             'label'               => 'Annotations',
@@ -132,7 +159,7 @@ class Shanuman_Visual_Annotation {
             '_shanuman_va_flagged'      => 'string'
         ];
 
-        foreach ( $meta_keys as $key => $type ) {
+        foreach ( $meta_keys as $key =>$type ) {
             register_post_meta( 'shanuman_va_annotation', $key, [
                 'type'         => $type,
                 'single'       => true,
@@ -141,15 +168,21 @@ class Shanuman_Visual_Annotation {
         }
     }
 
+    /**
+     * Strict API Permission Callback ensuring authenticated users can modify annotations.
+     * 
+     * @param WP_REST_Request $request The incoming API request.
+     * @return bool
+     */
     public function api_permission_check( $request ) {
         if ( ! current_user_can( 'edit_posts' ) ) {
             return false;
         }
 
-        $pin_id = $request->get_param( 'id' );
+        $pin_id =$request->get_param( 'id' );
         if ( $pin_id ) {
-            $post = get_post( $pin_id );
-            if ( ! $post || $post->post_type !== 'shanuman_va_annotation' ) {
+            $post = get_post($pin_id );
+            if ( ! $post \vert{}\vert{}$post->post_type !== 'shanuman_va_annotation' ) {
                 return false; 
             }
         }
@@ -157,11 +190,13 @@ class Shanuman_Visual_Annotation {
         return true;
     }
 
+    /**
+     * Registers REST API endpoints for fetching, creating, replying to, and approving pins.
+     */
     public function register_api_endpoints() {
-        $namespace = 'shanuman-va/v1';
-        $route     = '/annotations';
+        $namespace = 'shanuman-va/v1';$route     = '/annotations';
 
-        register_rest_route( $namespace, $route, [
+        register_rest_route( $namespace,$route, [
             [
                 'methods'             => \WP_REST_Server::READABLE,
                 'callback'            => [ $this, 'get_annotations' ],
@@ -174,7 +209,7 @@ class Shanuman_Visual_Annotation {
             ],
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)', [
             [
                 'methods'             => \WP_REST_Server::DELETABLE,
                 'callback'            => [ $this, 'delete_annotation' ],
@@ -182,7 +217,7 @@ class Shanuman_Visual_Annotation {
             ],
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)/replies', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)/replies', [
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => [ $this, 'add_annotation_reply' ],
@@ -190,7 +225,7 @@ class Shanuman_Visual_Annotation {
             ],
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)/approve', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)/approve', [
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => [ $this, 'approve_annotation' ],
@@ -198,7 +233,7 @@ class Shanuman_Visual_Annotation {
             ],
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)/reopen', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)/reopen', [
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => [ $this, 'reopen_annotation' ],
@@ -206,7 +241,7 @@ class Shanuman_Visual_Annotation {
             ],
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)/flag', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)/flag', [
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => [ $this, 'toggle_flag' ],
@@ -214,7 +249,7 @@ class Shanuman_Visual_Annotation {
             ],
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)/replies/(?P<reply_id>[a-zA-Z0-9_-]+)', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)/replies/(?P<reply_id>[a-zA-Z0-9_-]+)', [
             [
                 'methods'             => \WP_REST_Server::EDITABLE,
                 'callback'            => [ $this, 'update_annotation_reply' ],
@@ -227,7 +262,7 @@ class Shanuman_Visual_Annotation {
             ]
         ] );
 
-        register_rest_route( $namespace, $route . '/(?P<id>\d+)/replies/(?P<reply_id>[a-zA-Z0-9_-]+)/seen', [
+        register_rest_route( $namespace,$route . '/(?P<id>\d+)/replies/(?P<reply_id>[a-zA-Z0-9_-]+)/seen', [
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => [ $this, 'mark_reply_seen' ],
@@ -236,21 +271,22 @@ class Shanuman_Visual_Annotation {
         ] );
     }
 
-    public function get_annotations( $request ) {
-        $meta_query = [];
-        $show_resolved = $request->get_param( 'show_resolved' ) === 'true';
+    /**
+     * REST Callback: Retrieves annotations filtered by URL and resolution status.
+     */
+    public function get_annotations( $request ) {$meta_query = [];
+        $show_resolved =$request->get_param( 'show_resolved' ) === 'true';
 
-        if ( $request->get_param( 'context' ) !== 'admin' && ! $show_resolved ) {
-            $meta_query[] = [
+        if ( $request->get_param( 'context' ) !== 'admin' && ! $show_resolved ) {$meta_query[] = [
                 'relation' => 'OR',
                 [ 'key' => '_shanuman_va_status', 'compare' => 'NOT EXISTS' ],
                 [ 'key' => '_shanuman_va_status', 'value' => 'approved', 'compare' => '!=' ],
             ];
         }
 
-        $requested_url = $request->get_param( 'url' );
+        $requested_url =$request->get_param( 'url' );
         if ( ! empty( $requested_url ) ) {
-            $meta_query[] = [ 'key' => '_shanuman_va_url', 'value' => sanitize_text_field( $requested_url ) ];
+            $meta_query[] = [ 'key' => '_shanuman_va_url', 'value' => sanitize_text_field($requested_url ) ];
         }
 
         $args = [
@@ -260,15 +296,14 @@ class Shanuman_Visual_Annotation {
         ];
 
         if ( ! empty( $meta_query ) ) {
-            $args['meta_query'] = $meta_query;
+            $args['meta_query'] =$meta_query;
         }
 
-        $annotations = get_posts( $args );
-        $data        = [];
+        $annotations = get_posts( $args );$data        = [];
 
-        foreach ( $annotations as $post ) {
-            $replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
-            $author = get_userdata( $post->post_author );
+        foreach ( $annotations as$post ) {
+            $replies = get_post_meta($post->ID, '_shanuman_va_replies', true ) ?: [];
+            $author = get_userdata($post->post_author );
 
             $data[] = [
                 'id'          => $post->ID,
@@ -290,13 +325,16 @@ class Shanuman_Visual_Annotation {
         return rest_ensure_response( $data );
     }
 
+    /**
+     * REST Callback: Creates a new annotation pin.
+     */
     public function create_annotation( $request ) {
-        $comment    = sanitize_textarea_field( $request->get_param( 'comment' ) );
-        $xpath      = sanitize_text_field( $request->get_param( 'xpath' ) );
-        $percentX   = floatval( $request->get_param( 'percentX' ) );
-        $percentY   = floatval( $request->get_param( 'percentY' ) );
-        $url        = sanitize_text_field( $request->get_param( 'url' ) );
-        $page_title = sanitize_text_field( $request->get_param( 'page_title' ) );
+        $comment    = sanitize_textarea_field($request->get_param( 'comment' ) );
+        $xpath      = sanitize_text_field($request->get_param( 'xpath' ) );
+        $percentX   = floatval($request->get_param( 'percentX' ) );
+        $percentY   = floatval($request->get_param( 'percentY' ) );
+        $url        = sanitize_text_field($request->get_param( 'url' ) );
+        $page_title = sanitize_text_field($request->get_param( 'page_title' ) );
 
         $post_id = wp_insert_post( [
             'post_title'   => 'Pin on ' . wp_date( 'M j, Y H:i' ),
@@ -306,45 +344,57 @@ class Shanuman_Visual_Annotation {
             'post_author'  => get_current_user_id(),
         ] );
 
-        if ( is_wp_error( $post_id ) || $post_id === 0 ) {
+        if ( is_wp_error( $post_id ) \vert{}\vert{}$post_id === 0 ) {
             return new \WP_Error( 'db_insert_error', 'Could not save annotation.', [ 'status' => 500 ] );
         }
 
-        update_post_meta( $post_id, '_shanuman_va_target_xpath', $xpath );
-        update_post_meta( $post_id, '_shanuman_va_rel_x', $percentX );
-        update_post_meta( $post_id, '_shanuman_va_rel_y', $percentY );
-        update_post_meta( $post_id, '_shanuman_va_url', $url );
-        update_post_meta( $post_id, '_shanuman_va_page_title', $page_title );
+        update_post_meta( $post_id, '_shanuman_va_target_xpath',$xpath );
+        update_post_meta( $post_id, '_shanuman_va_rel_x',$percentX );
+        update_post_meta( $post_id, '_shanuman_va_rel_y',$percentY );
+        update_post_meta( $post_id, '_shanuman_va_url',$url );
+        update_post_meta( $post_id, '_shanuman_va_page_title',$page_title );
         update_post_meta( $post_id, '_shanuman_va_status', 'saved' );
         update_post_meta( $post_id, '_shanuman_va_flagged', 'false' );
 
         return rest_ensure_response( [ 'success' => true, 'id' => $post_id ] );
     }
 
+    /**
+     * REST Callback: Approves/resolves an annotation thread.
+     */
     public function approve_annotation( $request ) {
-        $post_id = absint( $request->get_param( 'id' ) );
+        $post_id = absint($request->get_param( 'id' ) );
         update_post_meta( $post_id, '_shanuman_va_status', 'approved' );
         return rest_ensure_response( [ 'success' => true ] );
     }
 
+    /**
+     * REST Callback: Reopens a previously approved annotation thread.
+     */
     public function reopen_annotation( $request ) {
-        $post_id = absint( $request->get_param( 'id' ) );
+        $post_id = absint($request->get_param( 'id' ) );
         update_post_meta( $post_id, '_shanuman_va_status', 'reopened' );
         return rest_ensure_response( [ 'success' => true ] );
     }
 
+    /**
+     * REST Callback: Toggles the flagged status of a pin.
+     */
     public function toggle_flag( $request ) {
-        $post_id = absint( $request->get_param( 'id' ) );
-        $post = get_post( $post_id );
-        if ( ! $post || $post->post_type !== 'shanuman_va_annotation' ) return new \WP_Error( 'invalid_id', 'Invalid ID.', [ 'status' => 404 ] );
+        $post_id = absint($request->get_param( 'id' ) );
+        $post = get_post($post_id );
+        if ( ! $post \vert{}\vert{}$post->post_type !== 'shanuman_va_annotation' ) return new \WP_Error( 'invalid_id', 'Invalid ID.', [ 'status' => 404 ] );
         
-        $current = get_post_meta( $post_id, '_shanuman_va_flagged', true );
-        $new_val = $current === 'true' ? 'false' : 'true';
-        update_post_meta( $post_id, '_shanuman_va_flagged', $new_val );
+        $current = get_post_meta($post_id, '_shanuman_va_flagged', true );
+        $new_val =$current === 'true' ? 'false' : 'true';
+        update_post_meta( $post_id, '_shanuman_va_flagged',$new_val );
         
         return rest_ensure_response( [ 'success' => true, 'flagged' => $new_val === 'true' ] );
     }
 
+    /**
+     * REST Callback: Adds a reply to an existing annotation thread.
+     */
     public function add_annotation_reply( $request ) {
         $pin_id = (int) $request['id'];
         $reply_text = sanitize_textarea_field( $request->get_param( 'reply' ) );
@@ -367,6 +417,9 @@ class Shanuman_Visual_Annotation {
         return rest_ensure_response( [ 'success' => true, 'replies' => $replies ] );
     }
 
+    /**
+     * REST Callback: Updates an existing reply.
+     */
     public function update_annotation_reply( $request ) {
         $pin_id   = (int) $request->get_param( 'id' );
         $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
@@ -388,6 +441,9 @@ class Shanuman_Visual_Annotation {
         return new \WP_Error( 'not_found', 'Reply not found.', [ 'status' => 404 ] );
     }
 
+    /**
+     * REST Callback: Deletes a specific reply from a thread.
+     */
     public function delete_annotation_reply( $request ) {
         $pin_id   = (int) $request->get_param( 'id' );
         $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
@@ -414,6 +470,9 @@ class Shanuman_Visual_Annotation {
         return rest_ensure_response( [ 'success' => true, 'replies' => $updated_replies ] );
     }
 
+    /**
+     * REST Callback: Marks a reply as seen by the current user.
+     */
     public function mark_reply_seen( $request ) {
         $pin_id   = (int) $request->get_param( 'id' );
         $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
@@ -434,16 +493,25 @@ class Shanuman_Visual_Annotation {
         return rest_ensure_response( [ 'success' => true ] );
     }
 
+    /**
+     * REST Callback: Permanently deletes an annotation thread.
+     */
     public function delete_annotation( $request ) {
         $post_id = absint( $request->get_param( 'id' ) );
         wp_delete_post( $post_id, true );
         return rest_ensure_response( [ 'success' => true ] );
     }
 
+    /**
+     * Registers the administrative menu page.
+     */
     public function register_admin_menu() {
         add_menu_page( 'Shanuman Annotations', 'Annotations', 'edit_posts', 'shanuman-visual-annotations', [ $this, 'render_admin_dashboard_content' ], 'dashicons-format-chat', 30 );
     }
 
+    /**
+     * Enqueues backend dashboard scripts, styling, and localization variables (`shanumanVaConfig`).
+     */
     public function enqueue_admin_assets( $hook ) {
         if ( 'toplevel_page_shanuman-visual-annotations' !== $hook ) return;
         wp_enqueue_script( 'shanuman-va-admin-js', plugin_dir_url( __FILE__ ) . 'assets/js/admin-dashboard.js', [ 'wp-element', 'wp-components', 'wp-api-fetch' ], '1.0.0', true );
@@ -461,8 +529,10 @@ class Shanuman_Visual_Annotation {
         wp_enqueue_style( 'wp-components' );
     }
 
+    /**
+     * Enqueues frontend overlay scripts and localization variables (`shanumanVaConfig`) for editors.
+     */
     public function enqueue_frontend_assets() {
-        // Bail if user cannot edit posts or if on a dynamic list page (Search, Categories, Tags, or Blog Index)
         if ( ! current_user_can( 'edit_posts' ) ) return;
         if ( is_archive() || is_search() || is_home() ) return;
 
@@ -480,4 +550,6 @@ class Shanuman_Visual_Annotation {
         ] );
     }
 }
+
+// Initialize the plugin singleton.
 Shanuman_Visual_Annotation::get_instance();

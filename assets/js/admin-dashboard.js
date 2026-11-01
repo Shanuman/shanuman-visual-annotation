@@ -1,9 +1,10 @@
-/* global wpVaConfig, wp, window, document */
+/* global shanumanVaConfig, wp, window, document */
 ( function( wp ) {
 	const { useState, useEffect, useCallback } = wp.element;
 
-	const fadeStyle = document.createElement('style');
-	fadeStyle.innerHTML = `
+	// Inject responsive styles and fade animations for administrative management
+	const adminStyle = document.createElement('style');
+	adminStyle.innerHTML = `
 		.wp-va-thread-item {
 			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 			transform-origin: top;
@@ -33,10 +34,11 @@
 			.wp-va-reply-header { flex-direction: column; align-items: flex-start !important; gap: 8px; }
 		}
 	`;
-	document.head.appendChild(fadeStyle);
+	document.head.appendChild(adminStyle);
 
+	// Reusable Flag Icon Component for flagging important feedback items
 	const FlagIcon = ( { isFlagged, onClick } ) => {
-		const alertColor = wpVaConfig.attentionColor || '#d63638';
+		const alertColor = shanumanVaConfig.attentionColor || '#d63638';
 		const color = isFlagged ? alertColor : '#8c8f94';
 		const fill = isFlagged ? alertColor : 'none';
 		return wp.element.createElement( 'svg', {
@@ -50,6 +52,7 @@
 		);
 	};
 
+	// Helper to format raw URLs into readable page titles for grouping
 	const formatGroupTitle = ( url, pageTitle ) => {
 		if ( pageTitle && pageTitle.trim() !== '' ) return pageTitle;
 		if ( !url || url === '/' ) return 'Home Page';
@@ -57,6 +60,7 @@
 		return cleanUrl.split(/[/-]/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 	};
 
+	// Main Admin Dashboard Component
 	const AdminDashboard = () => {
 		const [ pins, setPins ] = useState( [] );
 		const [ loading, setLoading ] = useState( true );
@@ -68,10 +72,11 @@
 		const [ submittingReply, setSubmittingReply ] = useState( {} ); 
 		const [ fadingOutId, setFadingOutId ] = useState( null );
 
-		const alertColor = wpVaConfig.attentionColor || '#d63638';
+		const alertColor = shanumanVaConfig.attentionColor || '#d63638';
 
+		// Fetch all annotation threads from the REST API
 		const loadPins = useCallback( () => {
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations?context=admin&show_resolved=true`, { headers: { 'X-WP-Nonce': wpVaConfig.nonce } } )
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations?context=admin&show_resolved=true`, { headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } )
 			.then( res => res.json() ).then( data => { setPins( Array.isArray( data ) ? data : [] ); setLoading( false ); } )
 			.catch( err => { console.error( 'Error fetching annotations:', err ); setLoading( false ); } );
 		}, [] );
@@ -89,14 +94,15 @@
 		const handleExpandAll = () => { const all = {}; Object.keys( grouped ).forEach( url => { all[url] = true; } ); setExpandedUrls( all ); };
 		const handleCollapseAll = () => setExpandedUrls( {} );
 
+		// Handle approval, reopening, and deletion actions
 		const handleAction = ( id, action ) => {
 			if ( action === 'DELETE' && ! window.confirm( 'Delete this thread permanently?' ) ) return;
 			
 			if ( action === 'approve' || action === 'reopen' ) {
 				setFadingOutId( id );
 				setTimeout( () => {
-					fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ id }/${ action }`, {
-						method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce }
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ id }/${ action }`, {
+						method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce }
 					} ).then( () => {
 						setFadingOutId( null );
 						loadPins();
@@ -105,48 +111,48 @@
 				return;
 			}
 
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ id }${ action !== 'DELETE' ? '/' + action : '' }`, {
-				method: action === 'DELETE' ? 'DELETE' : 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce }
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ id }${ action !== 'DELETE' ? '/' + action : '' }`, {
+				method: action === 'DELETE' ? 'DELETE' : 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce }
 			} ).then( () => loadPins() );
 		};
 
 		const handleToggleFlag = ( id ) => {
 			setPins( prev => prev.map( p => p.id === id ? { ...p, flagged: !p.flagged } : p ) );
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } )
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } )
 			.catch( () => loadPins() ); 
 		};
 
 		const handleBulkDelete = ( url ) => {
 			if ( ! window.confirm( `Are you sure you want to delete ALL ${ activeTab === 'pending' ? 'pending' : 'approved' } threads for ${ url }?` ) ) return;
 			const urlPins = filteredPins.filter( p => p.url === url );
-			Promise.all( urlPins.map( p => fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ p.id }`, { method: 'DELETE', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ) ) ).then( () => loadPins() );
+			Promise.all( urlPins.map( p => fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ p.id }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ) ) ).then( () => loadPins() );
 		};
 
 		const handleReply = ( id ) => {
 			const text = replyText[id] || ''; if ( ! text.trim() ) return;
 			setSubmittingReply( prev => ({ ...prev, [id]: true }) ); 
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ id }/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': wpVaConfig.nonce }, body: JSON.stringify( { reply: text } ) } )
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ id }/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: text } ) } )
 			.then( () => { setReplyText( prev => ( { ...prev, [id]: '' } ) ); setSubmittingReply( prev => ({ ...prev, [id]: false }) ); loadPins(); } )
 			.catch( () => { setSubmittingReply( prev => ({ ...prev, [id]: false }) ); });
 		};
 
 		const handleSaveEdit = ( pinId, replyId ) => {
 			if ( ! editReplyText.trim() ) return;
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinId }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': wpVaConfig.nonce }, body: JSON.stringify( { reply: editReplyText } ) } )
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinId }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: editReplyText } ) } )
 			.then( res => res.json() ).then( data => { if ( data.replies ) { setEditingReplyId( null ); loadPins(); } } );
 		};
 
 		const handleDeleteReply = ( pinId, replyId ) => {
 			if ( ! window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinId }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } )
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinId }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } )
 			.then( res => res.json() ).then( data => { if ( data.replies ) { loadPins(); } } );
 		};
 
 		const handleBadgeHover = ( pinId, replyId, isUnread ) => {
 			if ( ! isUnread ) return;
-			const currentUserId = parseInt( wpVaConfig.currentUserId, 10 );
+			const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 			setPins( prev => prev.map( p => p.id === pinId ? { ...p, replies: p.replies.map( r => r.id === replyId ? { ...r, seen_by: [ ...( r.seen_by || [] ), currentUserId ] } : r ) } : p ) );
-			fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinId }/replies/${ replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).catch( () => {} );
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinId }/replies/${ replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch( () => {} );
 		};
 
 		const totalPending = pins.filter( p => p.status !== 'approved' ).length;
@@ -154,7 +160,7 @@
 		
 		let totalUnread = 0;
 		pins.forEach( p => { ( p.replies || [] ).forEach( r => {
-			const currentUserId = parseInt( wpVaConfig.currentUserId, 10 );
+			const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 			if ( parseInt( r.user_id, 10 ) !== currentUserId && !( r.seen_by || [] ).includes( currentUserId ) ) totalUnread++;
 		} ); } );
 
@@ -171,8 +177,8 @@
 			),
 			wp.element.createElement( 'div', { className: 'wp-va-controls-container', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' } },
 				wp.element.createElement( 'div', { style: { display: 'flex', gap: '10px' } },
-					wp.element.createElement( 'button', { className: `button ${ activeTab === 'pending' ? 'button-primary' : '' }`, style: activeTab === 'pending' ? { backgroundColor: wpVaConfig.buttonColor, borderColor: wpVaConfig.buttonColor } : {}, onClick: () => setActiveTab( 'pending' ) }, 'Pending Feedback' ),
-					wp.element.createElement( 'button', { className: `button ${ activeTab === 'resolved' ? 'button-primary' : '' }`, style: activeTab === 'resolved' ? { backgroundColor: wpVaConfig.buttonColor, borderColor: wpVaConfig.buttonColor } : {}, onClick: () => setActiveTab( 'resolved' ) }, 'Approved' )
+					wp.element.createElement( 'button', { className: `button ${ activeTab === 'pending' ? 'button-primary' : '' }`, style: activeTab === 'pending' ? { backgroundColor: shanumanVaConfig.buttonColor, borderColor: shanumanVaConfig.buttonColor } : {}, onClick: () => setActiveTab( 'pending' ) }, 'Pending Feedback' ),
+					wp.element.createElement( 'button', { className: `button ${ activeTab === 'resolved' ? 'button-primary' : '' }`, style: activeTab === 'resolved' ? { backgroundColor: shanumanVaConfig.buttonColor, borderColor: shanumanVaConfig.buttonColor } : {}, onClick: () => setActiveTab( 'resolved' ) }, 'Approved' )
 				),
 				Object.keys( grouped ).length > 0 && wp.element.createElement( 'div', { style: { display: 'flex', gap: '10px' } }, wp.element.createElement( 'button', { className: 'button', onClick: handleExpandAll }, 'Expand All' ), wp.element.createElement( 'button', { className: 'button', onClick: handleCollapseAll }, 'Collapse All' ) )
 			),
@@ -180,7 +186,7 @@
 			Object.keys( grouped ).map( url => {
 				const urlPins = grouped[url];
 				const isExpanded = expandedUrls[url];
-				const groupHasUnread = urlPins.some( p => ( p.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== parseInt( wpVaConfig.currentUserId, 10 ) && !( r.seen_by || [] ).includes( parseInt( wpVaConfig.currentUserId, 10 ) ) ) );
+				const groupHasUnread = urlPins.some( p => ( p.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== parseInt( shanumanVaConfig.currentUserId, 10 ) && !( r.seen_by || [] ).includes( parseInt( shanumanVaConfig.currentUserId, 10 ) ) ) );
 				const groupHasFlag = urlPins.some( p => p.flagged );
 				const groupTitle = formatGroupTitle( url, urlPins[0]?.page_title ); 
 
@@ -192,15 +198,15 @@
 							groupHasFlag && wp.element.createElement( FlagIcon, { isFlagged: true } ) 
 						),
 						wp.element.createElement( 'div', { style: { display: 'flex', alignItems: 'center', gap: '15px' } },
-							wpVaConfig.isAdmin && wp.element.createElement( 'button', { className: 'button', style: { color: '#d63638', borderColor: '#d63638' }, onClick: ( e ) => { e.stopPropagation(); handleBulkDelete( url ); } }, 'Bulk Delete Group' ),
+							shanumanVaConfig.isAdmin && wp.element.createElement( 'button', { className: 'button', style: { color: '#d63638', borderColor: '#d63638' }, onClick: ( e ) => { e.stopPropagation(); handleBulkDelete( url ); } }, 'Bulk Delete Group' ),
 							wp.element.createElement( 'span', { className: 'dashicons dashicons-arrow-' + ( isExpanded ? 'up' : 'down' ), style: { color: '#8c8f94' } } )
 						)
 					),
 					isExpanded && wp.element.createElement( 'div', { style: { padding: '15px', display: 'flex', flexDirection: 'column', gap: '20px' } },
 						urlPins.map( pin => {
-							const canDelete = wpVaConfig.isAdmin || parseInt( pin.author_id, 10 ) === parseInt( wpVaConfig.currentUserId, 10 );
+							const canDelete = shanumanVaConfig.isAdmin || parseInt( pin.author_id, 10 ) === parseInt( shanumanVaConfig.currentUserId, 10 );
 							const isApproved = pin.status === 'approved';
-							const threadBorderColor = isApproved ? wpVaConfig.accentColor : wpVaConfig.buttonColor;
+							const threadBorderColor = isApproved ? shanumanVaConfig.accentColor : shanumanVaConfig.buttonColor;
 							const isPosting = submittingReply[pin.id] || false;
 							const isFading = fadingOutId === pin.id;
 							
@@ -212,18 +218,18 @@
 										wp.element.createElement( FlagIcon, { isFlagged: pin.flagged, onClick: () => handleToggleFlag( pin.id ) } )
 									),
 									wp.element.createElement( 'div', { className: 'wp-va-pin-actions', style: { display: 'flex', gap: '10px' } },
-										( ! isApproved ) && wp.element.createElement( 'a', { href: `${ pin.url }?wp_va_open_pin=${ pin.id }`, target: '_self', className: 'button button-link', style: { color: wpVaConfig.buttonColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' } }, 'View' ),
-										! isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: wpVaConfig.accentColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'approve' ) }, 'Approve' ),
-										isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: wpVaConfig.reopenColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'reopen' ) }, 'Reopen' ),
+										( ! isApproved ) && wp.element.createElement( 'a', { href: `${ pin.url }?wp_va_open_pin=${ pin.id }`, target: '_self', className: 'button button-link', style: { color: shanumanVaConfig.buttonColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' } }, 'View' ),
+										! isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.accentColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'approve' ) }, 'Approve' ),
+										isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.reopenColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'reopen' ) }, 'Reopen' ),
 										canDelete && wp.element.createElement( 'button', { className: 'button button-link', style: { color: '#d63638', textDecoration: 'none', padding: 0 }, onClick: () => handleAction( pin.id, 'DELETE' ) }, 'Delete' )
 									)
 								),
 								wp.element.createElement( 'p', { style: { fontSize: '14px', marginTop: 0, color: '#2c3338' } }, pin.comment ),
 								pin.replies && pin.replies.length > 0 && wp.element.createElement( 'div', { style: { marginLeft: '10px', paddingLeft: '15px', borderLeft: `2px solid ${ threadBorderColor }`, marginTop: '15px' } },
 									pin.replies.map( r => {
-										const currentUserId = parseInt( wpVaConfig.currentUserId, 10 );
+										const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 										const isReplyAuthor = parseInt( r.user_id, 10 ) === currentUserId;
-										const canDeleteReply = isReplyAuthor || wpVaConfig.isAdmin;
+										const canDeleteReply = isReplyAuthor || shanumanVaConfig.isAdmin;
 										const isEditing = editingReplyId === r.id;
 										const isUnread = !isReplyAuthor && !( r.seen_by || [] ).includes( currentUserId );
 										const showBadge = isUnread || r.is_edited;
@@ -240,17 +246,17 @@
 													}, `\u2022 ${ isUnread && !r.is_edited ? 'New' : 'Edited' }`, wp.element.createElement( 'span', { style: { display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '14px', height: '14px', background: badgeColor, color: '#fff', borderRadius: '50%', fontSize: '10px', fontWeight: 'bold', fontStyle: 'normal' } }, isUnread && !r.is_edited ? '!' : 'i' ) )
 												),
 												!isEditing && wp.element.createElement( 'div', { style: { display: 'flex', gap: '8px' } },
-													isReplyAuthor && wp.element.createElement( 'button', { className: 'button button-link', style: { color: wpVaConfig.buttonColor, padding: 0, fontSize: '11px', textDecoration: 'none' }, onClick: () => { setEditingReplyId( r.id ); setEditReplyText( r.content ); } }, 'Edit' ),
+													isReplyAuthor && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.buttonColor, padding: 0, fontSize: '11px', textDecoration: 'none' }, onClick: () => { setEditingReplyId( r.id ); setEditReplyText( r.content ); } }, 'Edit' ),
 													canDeleteReply && wp.element.createElement( 'button', { className: 'button button-link', style: { color: '#d63638', padding: 0, fontSize: '11px', textDecoration: 'none' }, onClick: () => handleDeleteReply( pin.id, r.id ) }, 'Delete' )
 												)
 											),
-											isEditing ? wp.element.createElement( 'div', { style: { marginTop: '4px' } }, wp.element.createElement( 'textarea', { value: editReplyText, onChange: ( e ) => setEditReplyText( e.target.value ), rows: 2, style: { width: '100%', padding: '8px', border: `1px solid ${ wpVaConfig.buttonColor }`, borderRadius: '4px', fontSize: '13px' } } ), wp.element.createElement( 'div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px' } }, wp.element.createElement( 'button', { className: 'button', onClick: () => { setEditingReplyId( null ); setEditReplyText( '' ); } }, 'Cancel' ), wp.element.createElement( 'button', { className: 'button button-primary', style: { backgroundColor: wpVaConfig.buttonColor, borderColor: wpVaConfig.buttonColor }, onClick: () => handleSaveEdit( pin.id, r.id ) }, 'Save' ) ) ) : wp.element.createElement( 'div', { style: { fontSize: '13px', color: '#2c3338', fontWeight: isUnread ? 'bold' : 'normal' } }, r.content )
+											isEditing ? wp.element.createElement( 'div', { style: { marginTop: '4px' } }, wp.element.createElement( 'textarea', { value: editReplyText, onChange: ( e ) => setEditReplyText( e.target.value ), rows: 2, style: { width: '100%', padding: '8px', border: `1px solid ${ shanumanVaConfig.buttonColor }`, borderRadius: '4px', fontSize: '13px' } } ), wp.element.createElement( 'div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px' } }, wp.element.createElement( 'button', { className: 'button', onClick: () => { setEditingReplyId( null ); setEditReplyText( '' ); } }, 'Cancel' ), wp.element.createElement( 'button', { className: 'button button-primary', style: { backgroundColor: shanumanVaConfig.buttonColor, borderColor: shanumanVaConfig.buttonColor }, onClick: () => handleSaveEdit( pin.id, r.id ) }, 'Save' ) ) ) : wp.element.createElement( 'div', { style: { fontSize: '13px', color: '#2c3338', fontWeight: isUnread ? 'bold' : 'normal' } }, r.content )
 										);
 									} )
 								),
 								wp.element.createElement( 'div', { style: { marginTop: '15px', display: 'flex', gap: '10px', alignItems: 'flex-start' } },
 									wp.element.createElement( 'textarea', { value: replyText[pin.id] || '', onChange: ( e ) => setReplyText( { ...replyText, [pin.id]: e.target.value } ), placeholder: 'Write a reply...', rows: 2, style: { flex: 1, padding: '8px', border: '1px solid #8c8f94', borderRadius: '4px', fontSize: '13px' } } ),
-									wp.element.createElement( 'button', { disabled: isPosting, className: 'button button-primary', style: { backgroundColor: wpVaConfig.buttonColor, borderColor: wpVaConfig.buttonColor, opacity: isPosting ? 0.6 : 1 }, onClick: () => handleReply( pin.id ) }, isPosting ? 'Posting...' : 'Reply' )
+									wp.element.createElement( 'button', { disabled: isPosting, className: 'button button-primary', style: { backgroundColor: shanumanVaConfig.buttonColor, borderColor: shanumanVaConfig.buttonColor, opacity: isPosting ? 0.6 : 1 }, onClick: () => handleReply( pin.id ) }, isPosting ? 'Posting...' : 'Reply' )
 								)
 							);
 						} )

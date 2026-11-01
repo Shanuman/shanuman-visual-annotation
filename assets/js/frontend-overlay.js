@@ -1,4 +1,4 @@
-/* global wpVaConfig */
+/* global shanumanVaConfig */
 ( function () {
 	const activePins = [];
 	let isAnnotating = false;
@@ -7,7 +7,7 @@
 	let isOverlayVisible = true; 
 	let isLargeAccessibilityMode = false; 
 
-	const alertColor = wpVaConfig.attentionColor || '#d63638';
+	const alertColor = shanumanVaConfig.attentionColor || '#d63638';
 	const configuredFormWidth = 340; // Fixed in Free Version
 
 	// Inject Mobile Responsive Styles for Toolbars & Forms
@@ -45,6 +45,7 @@
 		return isLargeAccessibilityMode ? ( configuredFormWidth + 100 ) : configuredFormWidth;
 	}
 
+	// Highlights the target DOM element when hovering or selecting a pin
 	function showHighlight( element ) {
 		if ( ! element ) return;
 		if ( ! highlightBox ) {
@@ -69,6 +70,7 @@
 
 	function hideHighlight() { if ( highlightBox ) highlightBox.style.display = 'none'; }
 
+	// Calculates robust XPath identifiers for element anchoring
 	function getXPath( element ) {
 		if ( ! element || element.nodeType !== 1 ) return '';
 		if ( element.id && ! element.id.startsWith( 'wp-va-' ) ) return `//*[@id="${ element.id }"]`;
@@ -120,19 +122,20 @@
 		form.style.top = `${ Math.round( top ) }px`;
 	}
 
+	// Renders temporary and saved pins onto the viewport overlay
 	function renderTemporaryPin( x, y, pinData ) {
-		let pinBgColor = wpVaConfig.buttonColor; 
+		let pinBgColor = shanumanVaConfig.buttonColor; 
 		let pinOutline = '2px solid #ffffff'; 
 
 		if ( pinData.status === 'draft' ) pinBgColor = alertColor; 
-		else if ( pinData.status === 'approved' ) pinBgColor = wpVaConfig.accentColor; 
-		else if ( pinData.status === 'reopened' ) { pinBgColor = wpVaConfig.buttonColor; pinOutline = '2px solid ' + wpVaConfig.reopenColor; }
+		else if ( pinData.status === 'approved' ) pinBgColor = shanumanVaConfig.accentColor; 
+		else if ( pinData.status === 'reopened' ) { pinBgColor = shanumanVaConfig.buttonColor; pinOutline = '2px solid ' + shanumanVaConfig.reopenColor; }
 
 		const pin = document.createElement( 'div' );
 		pin.className = 'wp-va-pin';
 		pin.style.cssText = `position: absolute; left: ${Math.round(x - 12)}px; top: ${Math.round(y - 24)}px; width: 24px; height: 24px; background-color: ${pinBgColor}; border: ${pinOutline}; box-sizing: border-box; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); cursor: pointer; z-index: 999998; box-shadow: 2px -2px 4px rgba(0,0,0,0.2); display: ${isOverlayVisible ? 'block' : 'none'};`;
 
-		const currentUserId = parseInt( wpVaConfig.currentUserId, 10 );
+		const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 		const hasUnread = ( pinData.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) );
 		
 		if ( hasUnread && pinData.status !== 'draft' ) {
@@ -156,14 +159,14 @@
 			let editingReplyId = null;
 
 			const renderThreadContent = () => {
-				const isMainAuthor = Boolean( wpVaConfig && parseInt( wpVaConfig.currentUserId, 10 ) === parseInt( pinData.author_id, 10 ) );
-				const canDelete = Boolean( wpVaConfig && ( isMainAuthor || wpVaConfig.isAdmin ) );
+				const isMainAuthor = Boolean( shanumanVaConfig && parseInt( shanumanVaConfig.currentUserId, 10 ) === parseInt( pinData.author_id, 10 ) );
+				const canDelete = Boolean( shanumanVaConfig && ( isMainAuthor || shanumanVaConfig.isAdmin ) );
 				const isApproved = pinData.status === 'approved';
 				const baseFontSize = isLargeAccessibilityMode ? '15px' : '13px';
 				const smallFontSize = isLargeAccessibilityMode ? '13px' : '11px';
 				const flagColor = pinData.flagged ? alertColor : '#8c8f94';
 				const flagFill = pinData.flagged ? alertColor : 'none';
-				const currentUserId = parseInt( wpVaConfig.currentUserId, 10 );
+				const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 
 				let threadHtml = `
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">
@@ -177,7 +180,7 @@
 								<svg class="wp-va-btn-flag" viewBox="0 0 24 24" width="14" height="14" stroke="${flagColor}" stroke-width="2" fill="${flagFill}" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; margin-left: 8px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
 							</div>
 							<div style="display: flex; gap: 8px;">
-								${ !isApproved ? `<button type="button" class="wp-va-btn-approve" style="background: none; border: none; color: ${ wpVaConfig.accentColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0; font-weight: bold;">Approve</button>` : `<button type="button" class="wp-va-btn-reopen" style="background: none; border: none; color: ${ wpVaConfig.reopenColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0; font-weight: bold;">Reopen</button>` }
+								${ !isApproved ? `<button type="button" class="wp-va-btn-approve" style="background: none; border: none; color: ${ shanumanVaConfig.accentColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0; font-weight: bold;">Approve</button>` : `<button type="button" class="wp-va-btn-reopen" style="background: none; border: none; color: ${ shanumanVaConfig.reopenColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0; font-weight: bold;">Reopen</button>` }
 							</div>
 						</div>
 						<div style="font-size: ${ baseFontSize }; color: #1d2327; margin-top: 4px; line-height: 1.4;">${ pinData.comment }</div>
@@ -187,15 +190,15 @@
 					threadHtml += `<div class="wp-va-replies-list" style="margin-left: 8px; border-left: 2px solid ${pinBgColor}; padding-left: 8px; margin-bottom: 10px; max-height: ${ isLargeAccessibilityMode ? '220px' : '150px' }; overflow-y: auto;">`;
 					pinData.replies.forEach( r => {
 						const isReplyAuthor = parseInt( r.user_id, 10 ) === currentUserId;
-						const canDeleteReply = isReplyAuthor || wpVaConfig.isAdmin;
+						const canDeleteReply = isReplyAuthor || shanumanVaConfig.isAdmin;
 						const isUnread = !isReplyAuthor && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId );
 						const showBadge = isUnread || r.is_edited;
 						const badgeColor = isUnread ? alertColor : '#a7aaad';
 						
-						threadHtml += `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-size: ${ smallFontSize }; color: #646970; display: flex; align-items: center;"><strong>${ r.author_name }</strong>&nbsp;&bull;&nbsp;${ r.date }&nbsp;&bull;&nbsp;${ showBadge ? `<span class="wp-va-edited-badge" data-pin-id="${ pinData.id }" data-reply-id="${ r.id }" data-unread="${ isUnread }" title="${ r.is_edited ? 'Original: '+r.original_content : 'Unread' }" style="color: ${ badgeColor }; font-weight: ${ isUnread ? 'bold' : 'normal' }; cursor: help; display: inline-flex; align-items: center; gap: 4px;">${ isUnread && !r.is_edited ? 'New' : 'Edited' } <span class="wp-va-info-circle" style="display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; background-color: ${ badgeColor }; color: #fff; border-radius: 50%; font-size: 10px; font-weight: bold;">${ isUnread && !r.is_edited ? '!' : 'i' }</span></span>` : '' }</div><div style="display: flex; gap: 8px;">${ isReplyAuthor && editingReplyId !== r.id ? `<button type="button" class="wp-va-btn-edit-reply" data-id="${ r.id }" style="background: none; border: none; color: ${ wpVaConfig.buttonColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Edit</button>` : '' }${ canDeleteReply && editingReplyId !== r.id ? `<button type="button" class="wp-va-btn-delete-reply" data-id="${ r.id }" style="background: none; border: none; color: #d63638; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Delete</button>` : '' }</div></div>`;
+						threadHtml += `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-size: ${ smallFontSize }; color: #646970; display: flex; align-items: center;"><strong>${ r.author_name }</strong>&nbsp;&bull;&nbsp;${ r.date }&nbsp;&bull;&nbsp;${ showBadge ? `<span class="wp-va-edited-badge" data-pin-id="${ pinData.id }" data-reply-id="${ r.id }" data-unread="${ isUnread }" title="${ r.is_edited ? 'Original: '+r.original_content : 'Unread' }" style="color: ${ badgeColor }; font-weight: ${ isUnread ? 'bold' : 'normal' }; cursor: help; display: inline-flex; align-items: center; gap: 4px;">${ isUnread && !r.is_edited ? 'New' : 'Edited' } <span class="wp-va-info-circle" style="display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; background-color: ${ badgeColor }; color: #fff; border-radius: 50%; font-size: 10px; font-weight: bold;">${ isUnread && !r.is_edited ? '!' : 'i' }</span></span>` : '' }</div><div style="display: flex; gap: 8px;">${ isReplyAuthor && editingReplyId !== r.id ? `<button type="button" class="wp-va-btn-edit-reply" data-id="${ r.id }" style="background: none; border: none; color: ${ shanumanVaConfig.buttonColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Edit</button>` : '' }${ canDeleteReply && editingReplyId !== r.id ? `<button type="button" class="wp-va-btn-delete-reply" data-id="${ r.id }" style="background: none; border: none; color: #d63638; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Delete</button>` : '' }</div></div>`;
 
 						if ( editingReplyId === r.id ) {
-							threadHtml += `<div style="margin-top: 4px;"><textarea class="wp-va-edit-reply-input" data-id="${ r.id }" rows="3" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid ${ wpVaConfig.buttonColor }; border-radius: 4px;">${ r.content }</textarea><div style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px;"><button type="button" class="wp-va-btn-cancel-reply-edit" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Cancel</button><button type="button" class="wp-va-btn-save-reply-edit" data-id="${ r.id }" style="background: ${ wpVaConfig.buttonColor }; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Save</button></div></div>`;
+							threadHtml += `<div style="margin-top: 4px;"><textarea class="wp-va-edit-reply-input" data-id="${ r.id }" rows="3" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid ${ shanumanVaConfig.buttonColor }; border-radius: 4px;">${ r.content }</textarea><div style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px;"><button type="button" class="wp-va-btn-cancel-reply-edit" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Cancel</button><button type="button" class="wp-va-btn-save-reply-edit" data-id="${ r.id }" style="background: ${ shanumanVaConfig.buttonColor }; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Save</button></div></div>`;
 						} else {
 							threadHtml += `<div style="font-size: ${ baseFontSize }; color: #2c3338; margin-top: 2px; line-height: 1.4; font-weight: ${ isUnread ? 'bold' : 'normal' };">${ r.content }</div>`;
 						}
@@ -204,11 +207,11 @@
 					threadHtml += '</div>';
 				}
 
-				threadHtml += `<div style="margin-top: 8px;"><textarea class="wp-va-reply-input" placeholder="Write a reply or status update..." rows="${ isLargeAccessibilityMode ? '4' : '2' }" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid #8c8f94; border-radius: 4px;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;"><button type="button" class="wp-va-submit-reply" style="background: ${ wpVaConfig.buttonColor }; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${ baseFontSize }; cursor: pointer; transition: opacity 0.2s ease;">Reply</button></div></div>`;
+				threadHtml += `<div style="margin-top: 8px;"><textarea class="wp-va-reply-input" placeholder="Write a reply or status update..." rows="${ isLargeAccessibilityMode ? '4' : '2' }" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid #8c8f94; border-radius: 4px;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;"><button type="button" class="wp-va-submit-reply" style="background: ${ shanumanVaConfig.buttonColor }; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${ baseFontSize }; cursor: pointer; transition: opacity 0.2s ease;">Reply</button></div></div>`;
 				form.innerHTML = threadHtml;
 
 				form.querySelector( '.wp-va-btn-flag' ).addEventListener( 'click', () => {
-					pinData.flagged = !pinData.flagged; renderThreadContent(); fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).catch(()=>{});
+					pinData.flagged = !pinData.flagged; renderThreadContent(); fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
 				});
 
 				const accessToggle = form.querySelector( '.wp-va-accessibility-toggle' );
@@ -219,10 +222,10 @@
 				} );
 
 				const approveBtn = form.querySelector( '.wp-va-btn-approve' );
-				if ( approveBtn ) approveBtn.addEventListener( 'click', () => { approveBtn.textContent = '...'; fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/approve`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).then( () => { pinData.status = 'approved'; loadExistingPins( false ); } ); } );
+				if ( approveBtn ) approveBtn.addEventListener( 'click', () => { approveBtn.textContent = '...'; fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/approve`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( () => { pinData.status = 'approved'; loadExistingPins( false ); } ); } );
 
 				const reopenBtn = form.querySelector( '.wp-va-btn-reopen' );
-				if ( reopenBtn ) reopenBtn.addEventListener( 'click', () => { reopenBtn.textContent = '...'; fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/reopen`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).then( () => { pinData.status = 'reopened'; loadExistingPins( false ); } ); } );
+				if ( reopenBtn ) reopenBtn.addEventListener( 'click', () => { reopenBtn.textContent = '...'; fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/reopen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( () => { pinData.status = 'reopened'; loadExistingPins( false ); } ); } );
 
 				form.querySelectorAll( '.wp-va-btn-edit-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => { e.preventDefault(); e.stopPropagation(); editingReplyId = e.target.dataset.id; renderThreadContent(); } ) );
 				form.querySelectorAll( '.wp-va-btn-cancel-reply-edit' ).forEach( btn => btn.addEventListener( 'click', ( e ) => { e.preventDefault(); e.stopPropagation(); editingReplyId = null; renderThreadContent(); } ) );
@@ -230,14 +233,14 @@
 					if (btn.disabled) return;
 					const replyId = e.target.dataset.id; const newText = form.querySelector( `.wp-va-edit-reply-input[data-id="${ replyId }"]` ).value.trim(); if ( ! newText ) return;
 					btn.textContent = 'Posting...'; btn.disabled = true; btn.style.opacity = '0.6';
-					fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': wpVaConfig.nonce }, body: JSON.stringify( { reply: newText } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; editingReplyId = null; renderThreadContent(); } } ).catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: newText } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; editingReplyId = null; renderThreadContent(); } } ).catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
 				} ) );
 
 				form.querySelectorAll( '.wp-va-btn-delete-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => {
 					e.preventDefault(); e.stopPropagation();
 					if ( !window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
 					const replyId = e.target.dataset.id;
-					fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); } } );
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); } } );
 				} ) );
 
 				const submitBtn = form.querySelector( '.wp-va-submit-reply' );
@@ -246,14 +249,14 @@
 					if (submitBtn.disabled) return;
 					const txt = replyInput.value.trim(); if ( !txt ) return;
 					submitBtn.textContent = 'Posting...'; submitBtn.disabled = true; submitBtn.style.opacity = '0.6';
-					fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': wpVaConfig.nonce }, body: JSON.stringify( { reply: txt } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); } } ).catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; });
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: txt } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); } } ).catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; });
 				});
 
 				form.querySelectorAll( '.wp-va-edited-badge' ).forEach( badge => {
 					if ( badge.dataset.unread === 'true' ) badge.addEventListener( 'mouseenter', () => {
 						badge.style.color = '#a7aaad'; badge.style.fontWeight = 'normal'; badge.dataset.unread = 'false';
 						const c = badge.querySelector('.wp-va-info-circle'); if(c) c.style.backgroundColor = '#a7aaad';
-						fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ badge.dataset.pinId }/replies/${ badge.dataset.replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).catch(()=>{});
+						fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ badge.dataset.pinId }/replies/${ badge.dataset.replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
 					}, { once: true } );
 				});
 			};
@@ -270,10 +273,10 @@
 						form.style.display = 'block';
 						if ( pinData.replies ) {
 							pinData.replies.forEach( r => {
-								const currentUserId = parseInt( wpVaConfig.currentUserId, 10 );
+								const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 								const seenBy = Array.isArray( r.seen_by ) ? r.seen_by : [];
 								if ( parseInt( r.user_id, 10 ) !== currentUserId && !seenBy.includes( currentUserId ) ) {
-									fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations/${ pinData.id }/replies/${ r.id }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': wpVaConfig.nonce } } ).catch(()=>{});
+									fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ r.id }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
 									r.seen_by = [ ...seenBy, currentUserId ];
 								}
 							});
@@ -288,7 +291,7 @@
 
 		} else {
 			const bFS = isLargeAccessibilityMode ? '15px' : '13px'; const sFS = isLargeAccessibilityMode ? '13px' : '11px'; const pS = isLargeAccessibilityMode ? '10px' : '6px';
-			form.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;"><button type="button" class="wp-va-accessibility-toggle" style="background: #f0f0f1; border: 1px solid #8c8f94; border-radius: 4px; padding: 2px 8px; font-size: ${sFS}; cursor: pointer; font-weight: bold;">${ isLargeAccessibilityMode ? 'Standard Size' : 'A+ Larger View' }</button><span style="font-size: ${sFS}; font-weight: bold;">New Feedback</span></div><textarea class="wp-va-new-comment" placeholder="Add your comment..." rows="${ isLargeAccessibilityMode ? '5' : '3' }" style="width: 100%; box-sizing: border-box; font-size: ${bFS}; padding: ${pS}; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;"><button type="button" class="wp-va-btn-cancel" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer;">Cancel</button><button type="button" class="wp-va-btn-save" style="background: ${wpVaConfig.buttonColor}; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer; transition: opacity 0.2s ease;">Save</button></div>`;
+			form.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;"><button type="button" class="wp-va-accessibility-toggle" style="background: #f0f0f1; border: 1px solid #8c8f94; border-radius: 4px; padding: 2px 8px; font-size: ${sFS}; cursor: pointer; font-weight: bold;">${ isLargeAccessibilityMode ? 'Standard Size' : 'A+ Larger View' }</button><span style="font-size: ${sFS}; font-weight: bold;">New Feedback</span></div><textarea class="wp-va-new-comment" placeholder="Add your comment..." rows="${ isLargeAccessibilityMode ? '5' : '3' }" style="width: 100%; box-sizing: border-box; font-size: ${bFS}; padding: ${pS}; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;"><button type="button" class="wp-va-btn-cancel" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer;">Cancel</button><button type="button" class="wp-va-btn-save" style="background: ${shanumanVaConfig.buttonColor}; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer; transition: opacity 0.2s ease;">Save</button></div>`;
 			
 			const accTgl = form.querySelector('.wp-va-accessibility-toggle');
 			if(accTgl) accTgl.addEventListener('click', () => { 
@@ -307,7 +310,7 @@
 				if (e.target.disabled) return;
 				const cmt = form.querySelector('.wp-va-new-comment').value.trim(); if(!cmt) return;
 				e.target.textContent = 'Posting...'; e.target.disabled = true; e.target.style.opacity = '0.6';
-				fetch( `${wpVaConfig.restUrl}wp-va/v1/annotations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': wpVaConfig.nonce }, body: JSON.stringify( { comment: cmt, xpath: pinData.xpath, percentX: pinData.percentX, percentY: pinData.percentY, url: window.location.pathname, page_title: document.title } ) } )
+				fetch( `${shanumanVaConfig.restUrl}shanuman-va/v1/annotations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { comment: cmt, xpath: pinData.xpath, percentX: pinData.percentX, percentY: pinData.percentY, url: window.location.pathname, page_title: document.title } ) } )
                 .then( res => res.json() )
                 .then( data => { 
 					pin.remove(); 
@@ -326,7 +329,7 @@
 
 	function loadExistingPins( isInitialLoad = false ) {
 		const hasDraft = activePins.some( p => p.status === 'draft' ); if ( !isInitialLoad && hasDraft ) return;
-		fetch( `${ wpVaConfig.restUrl }wp-va/v1/annotations?url=${ encodeURIComponent(window.location.pathname) }&show_resolved=${ isShowResolved }&t=${ new Date().getTime() }`, { headers: { 'X-WP-Nonce': wpVaConfig.nonce } } )
+		fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations?url=${ encodeURIComponent(window.location.pathname) }&show_resolved=${ isShowResolved }&t=${ new Date().getTime() }`, { headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } )
 		.then( res => res.json() ).then( data => {
 			if ( ! Array.isArray( data ) ) return;
 			
@@ -384,14 +387,14 @@
 		const tb = document.createElement('div'); tb.id = 'wp-va-bottom-right-toolbar'; tb.style.cssText = 'position: fixed !important; z-index: 999999 !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important;';
 		
 		const resBtn = document.createElement('button'); resBtn.id = 'wp-va-toggle-resolved-btn'; resBtn.textContent = 'Show Approved'; resBtn.style.cssText = `background-color: #fff; color: #2c3338; border: 1px solid #8c8f94; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
-		resBtn.addEventListener('click', (e) => { e.stopPropagation(); isShowResolved = !isShowResolved; resBtn.textContent = isShowResolved ? 'Hide Approved' : 'Show Approved'; resBtn.style.backgroundColor = isShowResolved ? '#f3fcf4' : '#fff'; resBtn.style.borderColor = isShowResolved ? wpVaConfig.accentColor : '#8c8f94'; resBtn.style.color = isShowResolved ? wpVaConfig.accentColor : '#2c3338'; loadExistingPins(); });
+		resBtn.addEventListener('click', (e) => { e.stopPropagation(); isShowResolved = !isShowResolved; resBtn.textContent = isShowResolved ? 'Hide Approved' : 'Show Approved'; resBtn.style.backgroundColor = isShowResolved ? '#f3fcf4' : '#fff'; resBtn.style.borderColor = isShowResolved ? shanumanVaConfig.accentColor : '#8c8f94'; resBtn.style.color = isShowResolved ? shanumanVaConfig.accentColor : '#2c3338'; loadExistingPins(); });
 
-		const addBtn = document.createElement('button'); addBtn.id = 'wp-va-toggle-btn'; addBtn.textContent = 'Add Comment'; addBtn.style.cssText = `background-color: ${wpVaConfig.buttonColor}; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
+		const addBtn = document.createElement('button'); addBtn.id = 'wp-va-toggle-btn'; addBtn.textContent = 'Add Comment'; addBtn.style.cssText = `background-color: ${shanumanVaConfig.buttonColor}; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
 		addBtn.addEventListener('click', (e) => { 
 			e.stopPropagation(); 
 			isAnnotating = !isAnnotating; 
 			addBtn.textContent = isAnnotating ? 'Exit Commenting' : 'Add Comment'; 
-			addBtn.style.backgroundColor = isAnnotating ? alertColor : wpVaConfig.buttonColor; 
+			addBtn.style.backgroundColor = isAnnotating ? alertColor : shanumanVaConfig.buttonColor; 
 			if(isAnnotating) document.body.classList.add('wp-va-is-annotating'); 
 			else { document.body.classList.remove('wp-va-is-annotating'); hideHighlight(); } 
 		});
@@ -418,7 +421,7 @@
 					isAnnotating = false; 
 					document.body.classList.remove('wp-va-is-annotating'); 
 					const ab = document.getElementById('wp-va-toggle-btn'); 
-					if(ab) { ab.textContent = 'Add Comment'; ab.style.backgroundColor = wpVaConfig.buttonColor; } 
+					if(ab) { ab.textContent = 'Add Comment'; ab.style.backgroundColor = shanumanVaConfig.buttonColor; } 
 				} 
 			}
 		});
