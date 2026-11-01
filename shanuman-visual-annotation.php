@@ -395,24 +395,17 @@ class Shanuman_Visual_Annotation {
     /**
      * REST Callback: Adds a reply to an existing annotation thread.
      */
-    public function add_annotation_reply( $request ) {
-        $pin_id = (int) $request['id'];
-        $reply_text = sanitize_textarea_field( $request->get_param( 'reply' ) );
-        $current_user = wp_get_current_user();
+    public function add_annotation_reply( $request ) {$pin_id = (int) $request['id'];$reply_text = sanitize_textarea_field( $request->get_param( 'reply' ) );$current_user = wp_get_current_user();
 
-        $replies = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
-        $new_reply = [
+        $replies = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];$new_reply = [
             'id'          => uniqid( 'reply_' ),
             'author_name' => $current_user->display_name,
             'user_id'     => $current_user->ID,
             'content'     => $reply_text,
             'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), current_time( 'mysql' ) ),
         ];
-        $replies[] = $new_reply;
-        update_post_meta( $pin_id, '_shanuman_va_replies', $replies );
-        
-        $reply_snippet = wp_trim_words( $reply_text, 8, '...' );
-        $this->log_action( "Reply added to pin #{$pin_id} by {$current_user->display_name}: \"{$reply_snippet}\"" );
+        $replies[] =$new_reply;
+        update_post_meta( $pin_id, '_shanuman_va_replies', $replies );$reply_snippet = wp_trim_words( $reply_text, 8, '...' );$this->log_action( "Reply added to pin #{$pin_id} by {$current_user->display_name}: \"{$reply_snippet}\"" );
 
         return rest_ensure_response( [ 'success' => true, 'replies' => $replies ] );
     }
@@ -420,21 +413,15 @@ class Shanuman_Visual_Annotation {
     /**
      * REST Callback: Updates an existing reply.
      */
-    public function update_annotation_reply( $request ) {
-        $pin_id   = (int) $request->get_param( 'id' );
-        $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
-        $new_text = sanitize_textarea_field( $request->get_param( 'reply' ) );
-        $replies = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
-        $current_user_id = get_current_user_id();
+    public function update_annotation_reply( $request ) {$pin_id   = (int) $request->get_param( 'id' );$reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );$new_text = sanitize_textarea_field( $request->get_param( 'reply' ) );$replies = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];$current_user_id = get_current_user_id();
 
-        foreach ( $replies as $index => $reply ) {
-            if ( isset( $reply['id'] ) && $reply['id'] === $reply_id ) {
-                if ( (int)$reply['user_id'] !== $current_user_id ) return new \WP_Error( 'forbidden', 'Only your own replies.', [ 'status' => 403 ] );
-                if ( empty( $reply['is_edited'] ) ) $replies[ $index ]['original_content'] = $reply['content'];
-                $replies[ $index ]['content']   = $new_text;
-                $replies[ $index ]['is_edited'] = true;
-                $replies[ $index ]['seen_by']   = [ $current_user_id ];
-                update_post_meta( $pin_id, '_shanuman_va_replies', $replies );
+        foreach ( $replies as $index =>$reply ) {
+            if ( isset( $reply['id'] ) && $reply['id'] ===$reply_id ) {
+                if ( (int)$reply['user_id'] !==$current_user_id ) return new \WP_Error( 'forbidden', 'Only your own replies.', [ 'status' => 403 ] );
+                if ( empty( $reply['is_edited'] ) ) $replies[$index ]['original_content'] = $reply['content'];$replies[ $index ]['content']   =$new_text;
+                $replies[$index ]['is_edited'] = true;
+                $replies[ $index ]['seen_by']   = [$current_user_id ];
+                update_post_meta( $pin_id, '_shanuman_va_replies',$replies );
                 return rest_ensure_response( [ 'success' => true, 'replies' => $replies ] );
             }
         }
@@ -445,111 +432,34 @@ class Shanuman_Visual_Annotation {
      * REST Callback: Deletes a specific reply from a thread.
      */
     public function delete_annotation_reply( $request ) {
-        $pin_id   = (int) $request->get_param( 'id' );
-        $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
-        $replies = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
-        $current_user_id = get_current_user_id();
-        $is_admin = current_user_can( 'manage_options' );
+        $pin_id   = (int)$request->get_param( 'id' );
+        $reply_id = sanitize_text_field($request->get_param( 'reply_id' ) );
+        $replies = get_post_meta($pin_id, '_shanuman_va_replies', true ) ?: [];
+        $current_user_id = get_current_user_id();$is_admin = current_user_can( 'manage_options' );
 
-        $updated_replies = [];
-        $deleted = false;
-        foreach ( $replies as $reply ) {
-            if ( isset( $reply['id'] ) && $reply['id'] === $reply_id ) {
-                if ( (int)$reply['user_id'] !== $current_user_id && ! $is_admin ) {
-                    return new \WP_Error( 'forbidden', 'Only your own replies can be deleted.', [ 'status' => 403 ] );
-                }
-                $deleted = true;
+        $updated_replies = [];$deleted = false;
+        foreach ( $replies as$reply ) {
+            if ( isset( $reply['id'] ) && $reply['id'] ===$reply_id ) {
+                if ( (int)$reply['user_id'] !==$current_user_id && ! $is_admin ) { return new \WP_Error( 'forbidden', 'Only your own replies can be deleted.', [ 'status' => 403 ] ); }$deleted = true;
                 continue; 
             }
-            $updated_replies[] = $reply;
+            $updated_replies[] =$reply;
         }
 
         if ( ! $deleted ) return new \WP_Error( 'not_found', 'Reply not found.', [ 'status' => 404 ] );
 
-        update_post_meta( $pin_id, '_shanuman_va_replies', $updated_replies );
+        update_post_meta( $pin_id, '_shanuman_va_replies',$updated_replies );
         return rest_ensure_response( [ 'success' => true, 'replies' => $updated_replies ] );
     }
 
     /**
      * REST Callback: Marks a reply as seen by the current user.
      */
-    public function mark_reply_seen( $request ) {
-        $pin_id   = (int) $request->get_param( 'id' );
-        $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
-        $user_id  = get_current_user_id();
-        $replies = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
+    public function mark_reply_seen( $request ) {$pin_id   = (int) $request->get_param( 'id' );$reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );$user_id  = get_current_user_id();
+        $replies = get_post_meta($pin_id, '_shanuman_va_replies', true ) ?: [];
 
-        foreach ( $replies as $index => $reply ) {
-            if ( isset( $reply['id'] ) && $reply['id'] === $reply_id ) {
-                $seen_by = isset( $reply['seen_by'] ) && is_array( $reply['seen_by'] ) ? $reply['seen_by'] : [];
-                if ( ! in_array( $user_id, $seen_by, true ) ) {
-                    $seen_by[] = $user_id;
-                    $replies[ $index ]['seen_by'] = $seen_by;
-                    update_post_meta( $pin_id, '_shanuman_va_replies', $replies );
-                }
-                break;
-            }
-        }
-        return rest_ensure_response( [ 'success' => true ] );
-    }
-
-    /**
-     * REST Callback: Permanently deletes an annotation thread.
-     */
-    public function delete_annotation( $request ) {
-        $post_id = absint( $request->get_param( 'id' ) );
-        wp_delete_post( $post_id, true );
-        return rest_ensure_response( [ 'success' => true ] );
-    }
-
-    /**
-     * Registers the administrative menu page.
-     */
-    public function register_admin_menu() {
-        add_menu_page( 'Shanuman Annotations', 'Annotations', 'edit_posts', 'shanuman-visual-annotations', [ $this, 'render_admin_dashboard_content' ], 'dashicons-format-chat', 30 );
-    }
-
-    /**
-     * Enqueues backend dashboard scripts, styling, and localization variables (`shanumanVaConfig`).
-     */
-    public function enqueue_admin_assets( $hook ) {
-        if ( 'toplevel_page_shanuman-visual-annotations' !== $hook ) return;
-        wp_enqueue_script( 'shanuman-va-admin-js', plugin_dir_url( __FILE__ ) . 'assets/js/admin-dashboard.js', [ 'wp-element', 'wp-components', 'wp-api-fetch' ], '1.0.0', true );
-        
-        wp_localize_script( 'shanuman-va-admin-js', 'shanumanVaConfig', [
-            'restUrl'        => esc_url_raw( rest_url() ),
-            'nonce'          => wp_create_nonce( 'wp_rest' ),
-            'currentUserId'  => get_current_user_id(),
-            'isAdmin'        => current_user_can( 'manage_options' ),
-            'buttonColor'    => '#2271b1',
-            'accentColor'    => '#46b450',
-            'reopenColor'    => '#f56e28',
-            'attentionColor' => '#d63638',
-        ] );
-        wp_enqueue_style( 'wp-components' );
-    }
-
-    /**
-     * Enqueues frontend overlay scripts and localization variables (`shanumanVaConfig`) for editors.
-     */
-    public function enqueue_frontend_assets() {
-        if ( ! current_user_can( 'edit_posts' ) ) return;
-        if ( is_archive() || is_search() || is_home() ) return;
-
-        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.0', true );
-        wp_localize_script( 'shanuman-va-frontend', 'shanumanVaConfig', [
-            'restUrl'        => esc_url_raw( rest_url() ),
-            'nonce'          => wp_create_nonce( 'wp_rest' ),
-            'currentUserId'  => get_current_user_id(),
-            'isAdmin'        => current_user_can( 'manage_options' ),
-            'buttonColor'    => '#2271b1',
-            'accentColor'    => '#46b450',
-            'reopenColor'    => '#f56e28',
-            'attentionColor' => '#d63638',
-            'formWidth'      => 340,
-        ] );
-    }
-}
-
-// Initialize the plugin singleton.
-Shanuman_Visual_Annotation::get_instance();
+        foreach ( $replies as $index =>$reply ) {
+            if ( isset( $reply['id'] ) && $reply['id'] ===$reply_id ) {
+                $seen_by = isset($reply['seen_by'] ) && is_array( $reply['seen_by'] ) ?$reply['seen_by'] : [];
+                if ( ! in_array( $user_id,$seen_by, true ) ) {
+                    $seen_by[] =$user_id;
