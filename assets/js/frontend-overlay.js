@@ -310,11 +310,6 @@
 				fetch( `${wpVaConfig.restUrl}wp-va/v1/annotations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': wpVaConfig.nonce }, body: JSON.stringify( { comment: cmt, xpath: pinData.xpath, percentX: pinData.percentX, percentY: pinData.percentY, url: window.location.pathname, page_title: document.title } ) } )
                 .then( res => res.json() )
                 .then( data => { 
-                    if ( data.code && data.code === 'limit_reached' ) {
-                        alert( data.message );
-                        e.target.textContent = 'Save'; e.target.disabled = false; e.target.style.opacity = '1';
-                        return;
-                    }
 					pin.remove(); 
 					form.remove(); 
 					hideHighlight(); 
@@ -347,9 +342,8 @@
 			data.forEach( savedPin => {
 				let el = null; try { el = document.evaluate( savedPin.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null ).singleNodeValue; } catch ( e ) {}
 				
-                // Free version skips missing elements completely instead of flagging them
 				if ( el ) {
-                    const pinData = { ...savedPin, percentX: parseFloat(savedPin.percentX), percentY: parseFloat(savedPin.percentY), element: el, domNode: null, formNode: null };
+					const pinData = { ...savedPin, percentX: parseFloat(savedPin.percentX), percentY: parseFloat(savedPin.percentY), element: el, domNode: null, formNode: null };
 					const r = el.getBoundingClientRect(); const absX = r.left + window.scrollX + ( r.width * ( parseFloat(savedPin.percentX)/100 ) ); const absY = r.top + window.scrollY + ( r.height * ( parseFloat(savedPin.percentY)/100 ) );
 					pinData.domNode = renderTemporaryPin( absX, absY, pinData ); 
 					activePins.push( pinData );
@@ -394,20 +388,13 @@
 
 		const addBtn = document.createElement('button'); addBtn.id = 'wp-va-toggle-btn'; addBtn.textContent = 'Add Comment'; addBtn.style.cssText = `background-color: ${wpVaConfig.buttonColor}; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
 		addBtn.addEventListener('click', (e) => { 
-            e.stopPropagation(); 
-            // Enforce 15 pin limit on frontend
-            const activeCount = activePins.filter(p => p.status !== 'approved' && p.status !== 'draft').length;
-            if ( !isAnnotating && activeCount >= 15 ) {
-                alert("Free version limit reached: Maximum 15 active pins per site. Please approve some existing pins to free up space, or upgrade to Agency Pro.");
-                return;
-            }
-            
-            isAnnotating = !isAnnotating; 
-            addBtn.textContent = isAnnotating ? 'Exit Commenting' : 'Add Comment'; 
-            addBtn.style.backgroundColor = isAnnotating ? alertColor : wpVaConfig.buttonColor; 
-            if(isAnnotating) document.body.classList.add('wp-va-is-annotating'); 
-            else { document.body.classList.remove('wp-va-is-annotating'); hideHighlight(); } 
-        });
+			e.stopPropagation(); 
+			isAnnotating = !isAnnotating; 
+			addBtn.textContent = isAnnotating ? 'Exit Commenting' : 'Add Comment'; 
+			addBtn.style.backgroundColor = isAnnotating ? alertColor : wpVaConfig.buttonColor; 
+			if(isAnnotating) document.body.classList.add('wp-va-is-annotating'); 
+			else { document.body.classList.remove('wp-va-is-annotating'); hideHighlight(); } 
+		});
 
 		tb.appendChild(resBtn); tb.appendChild(addBtn); document.body.appendChild(tb);
 	}
