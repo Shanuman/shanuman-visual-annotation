@@ -6,9 +6,10 @@
 	let isShowResolved = false;
 	let isOverlayVisible = true; 
 	let isLargeAccessibilityMode = false; 
+	let isDimmed = true; 
 
 	const alertColor = shanumanVaConfig.attentionColor || '#d63638';
-	const configuredFormWidth = 380;
+	const configuredFormWidth = 380; 
 
 	// Inject Mobile Responsive Styles for Toolbars & Forms
 	const responsiveStyle = document.createElement( 'style' );
@@ -41,11 +42,12 @@
 	cursorStyle.innerHTML = 'body.shanuman-va-is-annotating * { cursor: crosshair !important; }';
 	document.head.appendChild( cursorStyle );
 
-	//Hardcoded Dimming Layer for better visibility of pins
+	// --- Background Dimming Layer ---
 	const dimLayer = document.createElement( 'div' );
 	dimLayer.id = 'shanuman-va-dimming-layer';
 	dimLayer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.4); z-index: 999995; pointer-events: none; transition: opacity 0.3s ease; opacity: 1;';
 	document.body.appendChild( dimLayer );
+	// --------------------------------
 
 	function getActiveFormWidth() {
 		return isLargeAccessibilityMode ? ( configuredFormWidth + 100 ) : configuredFormWidth;
@@ -413,17 +415,35 @@
 		const tb = document.createElement('div'); tb.id = 'shanuman-va-bottom-left-toolbar'; tb.style.cssText = 'position: fixed !important; z-index: 999999 !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important;';
 		
 		const mastBtn = document.createElement('button'); mastBtn.id = 'shanuman-va-master-toggle-btn'; mastBtn.textContent = 'Hide Annotations'; mastBtn.style.cssText = 'background-color: #1d2327; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; white-space: nowrap !important;';
+		
+		// --- Toggle Dimming Button ---
+		const dimBtn = document.createElement('button');
+		dimBtn.id = 'shanuman-va-dim-toggle-btn';
+		dimBtn.textContent = isDimmed ? 'Remove Dim' : 'Dim Background';
+		dimBtn.style.cssText = `background-color: #fff; color: #2c3338; border: 1px solid #8c8f94; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
+
+		dimBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			isDimmed = !isDimmed;
+			dimBtn.textContent = isDimmed ? 'Remove Dim' : 'Dim Background';
+			const dimmer = document.getElementById('shanuman-va-dimming-layer');
+			if (dimmer) dimmer.style.opacity = (isOverlayVisible && isDimmed) ? '1' : '0';
+		});
+		// ----------------------------------
+
 		mastBtn.addEventListener('click', (e) => {
 			e.stopPropagation(); isOverlayVisible = !isOverlayVisible; mastBtn.textContent = isOverlayVisible ? 'Hide Annotations' : 'Show Annotations';
 			
 			const rightToolbar = document.getElementById('shanuman-va-bottom-right-toolbar');
 			if (rightToolbar) rightToolbar.style.setProperty('display', isOverlayVisible ? 'flex' : 'none', 'important');
 			
-			// --- Toggle the dimming layer opacity ---
-			const dimmer = document.getElementById('shanuman-va-dimming-layer');
-			if (dimmer) dimmer.style.opacity = isOverlayVisible ? '1' : '0';
-			// ---------------------------------------------
+			// Toggle dimming button visibility
+			dimBtn.style.display = isOverlayVisible ? 'block' : 'none';
 
+			// Toggle the dimming layer opacity based on both states
+			const dimmer = document.getElementById('shanuman-va-dimming-layer');
+			if (dimmer) dimmer.style.opacity = (isOverlayVisible && isDimmed) ? '1' : '0';
+			
 			activePins.forEach( p => { if(p.domNode) p.domNode.style.display = isOverlayVisible ? 'block' : 'none'; if(!isOverlayVisible && p.formNode) p.formNode.style.display = 'none'; });
 			
 			if(!isOverlayVisible) { 
@@ -437,7 +457,9 @@
 			}
 		});
 
-		tb.appendChild(mastBtn); document.body.appendChild(tb);
+		tb.appendChild(mastBtn); 
+		tb.appendChild(dimBtn); 
+		document.body.appendChild(tb);
 	}
 
 	document.addEventListener( 'click', ( e ) => {
