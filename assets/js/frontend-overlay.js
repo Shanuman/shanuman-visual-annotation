@@ -41,6 +41,13 @@
 	cursorStyle.innerHTML = 'body.wp-va-is-annotating * { cursor: crosshair !important; }';
 	document.head.appendChild( cursorStyle );
 
+	//Hardcoded Dimming Layer for better visibility
+	const dimLayer = document.createElement( 'div' );
+	dimLayer.id = 'wp-va-dimming-layer';
+	dimLayer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.4); z-index: 999995; pointer-events: none; transition: opacity 0.3s ease; opacity: 1;';
+	document.body.appendChild( dimLayer );
+	// -----------------------------------------------------
+
 	function getActiveFormWidth() {
 		return isLargeAccessibilityMode ? ( configuredFormWidth + 100 ) : configuredFormWidth;
 	}
@@ -56,7 +63,7 @@
 			highlightBox.style.border = `2px solid ${alertColor}`;
 			highlightBox.style.backgroundColor = 'rgba(214, 54, 56, 0.05)';
 			highlightBox.style.pointerEvents = 'none';
-			highlightBox.style.zIndex = '999997';
+			highlightBox.style.zIndex = '999997'; // Above Dimmer, Below Pins
 			highlightBox.style.transition = 'all 0.2s ease-in-out';
 			document.body.appendChild( highlightBox );
 		}
@@ -413,6 +420,11 @@
 			const rightToolbar = document.getElementById('wp-va-bottom-right-toolbar');
 			if (rightToolbar) rightToolbar.style.setProperty('display', isOverlayVisible ? 'flex' : 'none', 'important');
 			
+			// --- NEW: Toggle the dimming layer opacity ---
+			const dimmer = document.getElementById('wp-va-dimming-layer');
+			if (dimmer) dimmer.style.opacity = isOverlayVisible ? '1' : '0';
+			// ---------------------------------------------
+
 			activePins.forEach( p => { if(p.domNode) p.domNode.style.display = isOverlayVisible ? 'block' : 'none'; if(!isOverlayVisible && p.formNode) p.formNode.style.display = 'none'; });
 			
 			if(!isOverlayVisible) { 
