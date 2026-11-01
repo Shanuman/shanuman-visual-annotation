@@ -3,7 +3,7 @@
  * Plugin Name: Shanuman Visual Annotation
  * Description: A lightweight visual feedback, annotation and review tool for WordPress.
  * Version: 1.0.0
- * Author: Shanuman
+ * Author: shanuman
  * Text Domain: shanuman-visual-annotation
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
