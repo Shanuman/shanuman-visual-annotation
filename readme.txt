@@ -1,61 +1,60 @@
 === Shanuman Visual Annotation ===
 Contributors: shanuman
-Tags: visual feedback, annotation, client review, bug tracker
-Requires at least: 6.0
-Tested up to: 7.1
+Tags: visual feedback, annotation, client feedback, website review, bug tracker
+Requires at least: 5.8
+Tested up to: 6.4
 Stable tag: 1.0.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Let clients point, click, and comment directly on your website. A lightweight, privacy-first visual feedback tool for rapid design approvals.
+A lightweight visual feedback and annotation tool for WordPress. Pin comments directly onto your website elements.
 
 == Description ==
 
-**Shanuman Visual Annotation** is a streamlined, WordPress-native visual feedback tool built specifically for web developers, designers, and creative agencies. It allows you and your clients to leave comments directly on top of website elements, pinning feedback precisely where it belongs.
+Shanuman Visual Annotation transforms your WordPress website into a live, interactive feedback canvas. Built specifically for agencies, freelancers, and site owners, this lightweight tool allows logged-in editors to leave precise, element-anchored comments directly on the frontend of the website. 
 
-Developer Note on Source Code: The JavaScript in this plugin (frontend-overlay.js and admin-dashboard.js) is written entirely in native Vanilla JS utilizing the native WordPress wp.element library directly. No build tools, Webpack, NPM, or minification processes are used. Development and raw source code can be found at: https://github.com/Shanuman/shanuman-visual-annotation 
+Stop wrestling with messy spreadsheets and confusing screenshots. With Shanuman Visual Annotation, clients can simply click any element on the page, drop a pin, and type their feedback.
 
+### Features
+* **Element-Anchored Pins:** Click anywhere on the page to drop a visual pin perfectly anchored to the underlying HTML element.
+* **Live Threaded Discussions:** Reply to feedback and have full conversations directly on the page.
+* **Resolution Workflow:** Easily track feedback status by marking pins as "Approved" when the task is complete.
+* **Smart Dimming Layer:** A built-in dark overlay ensures that your feedback pins always stand out, regardless of the website's background color or design.
+* **Centralized Dashboard:** Review, manage, and bulk-delete feedback threads across your entire website from a clean, React-powered backend dashboard.
+* **Flag Important Items:** Mark critical feedback threads with a high-priority flag to ensure they get handled first.
+* **Unread Notifications:** Visual indicators let you know instantly when a client has left a new reply on a thread.
 
-Instead of paying expensive monthly per-user fees for third-party SaaS tools, this plugin keeps all your client feedback secure, private, and hosted right inside your own WordPress database.
+### Zero Bloat
+This plugin is built with pure, native Vanilla JS and the native WordPress `wp.element` library. It contains zero heavy build tools, no Webpack, and no jQuery dependencies. 
 
-### Core Features
-*   **Point-and-Click Feedback:** Drop pins on any DOM element on the frontend of your website.
-*   **Advanced XPath Anchoring:** Pins intelligently lock onto HTML elements, surviving window resizing and mobile responsive shifts.
-*   **Centralised Dashboard:** View, reply to, and approve client feedback directly from the WordPress backend.
-*   **Mobile-First Design:** Both the frontend annotation overlay and the backend dashboard are 100% mobile responsive.
-*   **Brand Customisation:** Set your primary button colours to match your brand identity.
-*   **Lightweight & Fast:** Built with vanilla JavaScript and the WordPress REST API—no jQuery bloat or heavy external libraries.
+**Developer Note on Source Code:** The JavaScript in this plugin (frontend-overlay.js and admin-dashboard.js) is written entirely in native Vanilla JS utilizing the native WordPress wp.element library directly. No build tools, Webpack, NPM, or minification processes are used. Development and raw source code can be found at: https://github.com/shanuman/shanuman-visual-annotation
 
 == Installation ==
 
 1. Upload the `shanuman-visual-annotation` folder to the `/wp-content/plugins/` directory, or install directly through the WordPress plugins screen.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Navigate to **Annotations -> Settings** in the WordPress menu to set your primary brand colour.
-4. Visit the frontend of your website and click **Add Comment** in the bottom right corner to start dropping pins!
+3. Log in as an Administrator or Editor.
+4. Visit the frontend of your website and click the "Add Comment" button in the bottom right corner to begin annotating!
 
 == Frequently Asked Questions ==
 
-= Will this slow down my website? =
-No. Shanuman Visual Annotation is highly optimised. It uses lightweight, native vanilla JavaScript and only loads for logged-in users with the correct permissions (Administrators/Editors). Your regular website visitors will not load the script at all.
+= Who can see and leave annotations? =
+Only users who are logged in and have the `edit_posts` capability (Administrators and Editors) can see the annotation interface and leave feedback. Your regular website visitors will never see the pins.
 
-= What happens if I change my website layout? =
-The plugin uses advanced XPath calculations and percentage-based coordinates to anchor pins. If the screen size changes (like viewing on mobile), the pins will scale and stay attached to their target elements.
+= Where do I manage all the feedback? =
+In your WordPress admin sidebar, click on the "Annotations" menu item to access the centralized management dashboard. 
 
-= Where is my feedback stored? =
-All annotations, threads, and metadata are stored securely within your own WordPress database as a custom post type. No data is sent to external servers.
-
-= Who can leave feedback? =
-Users must be logged into WordPress with the capability to edit posts (Administrators and Editors) to leave and manage annotations. 
+= Does this work on mobile? =
+Yes! The annotation overlay and toolbars are fully responsive and work seamlessly on mobile devices.
 
 == Screenshots ==
 
-1. The frontend visual annotation overlay and comment threads.
-2. The backend client feedback dashboard.
-3. Responsive mobile view for on-the-go approvals.
-4. The plugin settings panel.
+1. The frontend annotation interface with a live feedback pin.
+2. The centralized backend management dashboard.
+3. An active threaded discussion on a specific webpage element.
 
 == Changelog ==
 
 = 1.0.0 =
-* Initial release on the WordPress repository! Includes core XPath anchoring, frontend overlay, and backend management dashboard.
+* Initial public release.
