@@ -5,7 +5,7 @@
  * Description: A lightweight visual feedback and annotation tool for WordPress.
  * Version: 1.0.2
  * Author: Shanuman
- * Author URI:
+ * Author URI: https://profiles.wordpress.org/shanuman/
  * Text Domain: shanuman-visual-annotation
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -60,30 +60,30 @@ class Shanuman_Visual_Annotation {
             $this->log_action( "Feedback thread deleted (#{$post->ID})." );
         }
     }
-	public function handle_reset_action() {
-		if ( isset( $_POST['shanuman_va_reset_plugin_submit'] ) ) {
-			// Verify the nonce securely before processing any POST data
-			if ( ! isset( $_POST['shanuman_va_reset_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['shanuman_va_reset_nonce'] ) ), 'shanuman_va_reset_action_nonce' ) ) {
-				return; // Exit if nonce verification fails
-			}
 
-			if ( current_user_can( 'manage_options' ) ) {
-				$annotations = get_posts( [
-						'post_type'      => 'shanuman_pin',
-						'posts_per_page' => -1,
-						'post_status'    => 'any',
-					] );
-					foreach ( $annotations as $ann ) {
-						wp_delete_post( $ann->ID, true );
-					}
-					update_option( 'shanuman_va_activity_log', [], false );
-					do_action( 'shanuman_va_after_plugin_reset' );
+    public function handle_reset_action() {
+        if ( isset( $_POST['shanuman_va_reset_plugin_submit'] ) ) {
+            if ( ! isset( $_POST['shanuman_va_reset_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['shanuman_va_reset_nonce'] ) ), 'shanuman_va_reset_action_nonce' ) ) {
+                return;
+            }
+            if ( current_user_can( 'manage_options' ) ) {
+                $annotations = get_posts( [
+                    'post_type'      => 'shanuman_pin',
+                    'posts_per_page' => -1,
+                    'post_status'    => 'any',
+                ] );
+                foreach ( $annotations as $ann ) {
+                    wp_delete_post( $ann->ID, true );
+                }
+                update_option( 'shanuman_va_activity_log', [], false );
+                do_action( 'shanuman_va_after_plugin_reset' );
 
-					$this->log_action( 'Plugin data wiped and factory reset executed by administrator.' );
-					add_settings_error( 'shanuman_va_messages', 'shanuman_va_reset_success', 'All annotations, settings, and feedback threads have been permanently wiped.', 'updated' );
-			}
-		}
-	}
+                $this->log_action( 'Plugin data wiped and factory reset executed by administrator.' );
+                add_settings_error( 'shanuman_va_messages', 'shanuman_va_reset_success', 'All annotations, settings, and feedback threads have been permanently wiped.', 'updated' );
+            }
+        }
+    }
+
     public function render_admin_dashboard_content() {
         if ( ! current_user_can( 'edit_posts' ) ) return;
         settings_errors( 'shanuman_va_messages' );
@@ -92,6 +92,7 @@ class Shanuman_Visual_Annotation {
         $per_page      = 20;
         $total_logs    = count( $activity_logs );
         $total_pages   = max( 1, ceil( $total_logs / $per_page ) );
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $current_page  = isset( $_GET['log_page'] ) ? max( 1, min( $total_pages, absint( $_GET['log_page'] ) ) ) : 1;
         $offset        = ( $current_page - 1 ) * $per_page;
         $paged_logs    = array_slice( $activity_logs, $offset, $per_page );
@@ -273,67 +274,68 @@ class Shanuman_Visual_Annotation {
     }
 
     public function get_annotations( $request ) {
-    $meta_query    = [];
-    $show_resolved = $request->get_param( 'show_resolved' ) === 'true';
+        $meta_query    = [];
+        $show_resolved = $request->get_param( 'show_resolved' ) === 'true';
 
-    if ( $request->get_param( 'context' ) !== 'admin' && ! $show_resolved ) {
-        $meta_query[] = [
-            'relation' => 'OR',
-            [ 'key' => '_shanuman_va_status', 'compare' => 'NOT EXISTS' ],
-            [ 'key' => '_shanuman_va_status', 'value' => 'approved', 'compare' => '!=' ],
-        ];
-    }
-
-    $requested_url = $request->get_param( 'url' );
-    if ( ! empty( $requested_url ) ) {
-        $meta_query[] = [ 'key' => '_shanuman_va_url', 'value' => sanitize_text_field( $requested_url ) ];
-    }
-
-    $args = [
-        'post_type'      => 'shanuman_pin',
-        'posts_per_page' => -1,
-        'post_status'    => 'any',
-    ];
-
-    if ( ! empty( $meta_query ) ) {
-        $args['meta_query'] = $meta_query;
-    }
-
-    $annotations = get_posts( $args );
-    $data        = [];
-
-    foreach ( $annotations as $post ) {
-        $replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
-        $author  = get_userdata( $post->post_author );
-
-        $guest_name = get_post_meta( $post->ID, '_shanuman_va_guest_name', true );
-        if ( empty( $guest_name ) ) {
-            $guest_name = 'Guest Reviewer';
+        if ( $request->get_param( 'context' ) !== 'admin' && ! $show_resolved ) {
+            $meta_query[] = [
+                'relation' => 'OR',
+                [ 'key' => '_shanuman_va_status', 'compare' => 'NOT EXISTS' ],
+                [ 'key' => '_shanuman_va_status', 'value' => 'approved', 'compare' => '!=' ],
+            ];
         }
 
-        $author_name = $author ? $author->display_name : apply_filters( 'shanuman_va_guest_author_name', $guest_name, $request );
+        $requested_url = $request->get_param( 'url' );
+        if ( ! empty( $requested_url ) ) {
+            $meta_query[] = [ 'key' => '_shanuman_va_url', 'value' => sanitize_text_field( $requested_url ) ];
+        }
 
-        $item = [
-            'id'          => $post->ID,
-            'author_id'   => (int) $post->post_author,
-            'author_name' => $author_name,
-            'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
-            'comment'     => $post->post_content,
-            'replies'     => $replies,
-            'xpath'       => get_post_meta( $post->ID, '_shanuman_va_target_xpath', true ),
-            'percentX'    => get_post_meta( $post->ID, '_shanuman_va_rel_x', true ),
-            'percentY'    => get_post_meta( $post->ID, '_shanuman_va_rel_y', true ),
-            'url'         => get_post_meta( $post->ID, '_shanuman_va_url', true ),
-            'page_title'  => get_post_meta( $post->ID, '_shanuman_va_page_title', true ),
-            'status'      => get_post_meta( $post->ID, '_shanuman_va_status', true ),
-            'flagged'     => get_post_meta( $post->ID, '_shanuman_va_flagged', true ) === 'true',
+        $args = [
+            'post_type'      => 'shanuman_pin',
+            'posts_per_page' => -1,
+            'post_status'    => 'any',
         ];
 
-        $data[] = apply_filters( 'shanuman_va_annotation_response_item', $item, $post );
-    }
+        // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+        if ( ! empty( $meta_query ) ) {
+            $args['meta_query'] = $meta_query;
+        }
 
-    return rest_ensure_response( $data );
-}
+        $annotations = get_posts( $args );
+        $data        = [];
+
+        foreach ( $annotations as $post ) {
+            $replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
+            $author  = get_userdata( $post->post_author );
+
+            $guest_name = get_post_meta( $post->ID, '_shanuman_va_guest_name', true );
+            if ( empty( $guest_name ) ) {
+                $guest_name = 'Guest Reviewer';
+            }
+
+            $author_name = $author ? $author->display_name : ( get_post_meta( $post->ID, '_shanuman_va_guest_name', true ) ?: 'Guest Reviewer' );
+
+            $item = [
+                'id'          => $post->ID,
+                'author_id'   => (int) $post->post_author,
+                'author_name' => $author_name,
+                'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
+                'comment'     => $post->post_content,
+                'replies'     => $replies,
+                'xpath'       => get_post_meta( $post->ID, '_shanuman_va_target_xpath', true ),
+                'percentX'    => get_post_meta( $post->ID, '_shanuman_va_rel_x', true ),
+                'percentY'    => get_post_meta( $post->ID, '_shanuman_va_rel_y', true ),
+                'url'         => get_post_meta( $post->ID, '_shanuman_va_url', true ),
+                'page_title'  => get_post_meta( $post->ID, '_shanuman_va_page_title', true ),
+                'status'      => get_post_meta( $post->ID, '_shanuman_va_status', true ),
+                'flagged'     => get_post_meta( $post->ID, '_shanuman_va_flagged', true ) === 'true',
+            ];
+
+            $data[] = apply_filters( 'shanuman_va_annotation_response_item', $item, $post );
+        }
+
+        return rest_ensure_response( $data );
+    }
 
     public function create_annotation( $request ) {
         $comment    = sanitize_textarea_field( $request->get_param( 'comment' ) );
@@ -419,13 +421,13 @@ class Shanuman_Visual_Annotation {
 
     public function update_annotation_reply( $request ) {
         $pin_id          = (int) $request->get_param( 'id' );
-        $reply_id        = sanitize_text_field( $request->get_param( 'reply_id' ) );
+        $reply_id        = sanitize_text_field( trim( $request->get_param( 'reply_id' ) ) );
         $new_text        = sanitize_textarea_field( $request->get_param( 'reply' ) );
         $replies         = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
         $current_user_id = get_current_user_id();
 
         foreach ( $replies as $index => $reply ) {
-            if ( isset( $reply['id'] ) && $reply['id'] === $reply_id ) {
+            if ( isset( $reply['id'] ) && trim( $reply['id'] ) === $reply_id ) {
                 if ( (int) $reply['user_id'] !== $current_user_id ) {
                     return new \WP_Error( 'forbidden', 'Only your own replies.', [ 'status' => 403 ] );
                 }
@@ -444,7 +446,7 @@ class Shanuman_Visual_Annotation {
 
     public function delete_annotation_reply( $request ) {
         $pin_id          = (int) $request->get_param( 'id' );
-        $reply_id        = sanitize_text_field( $request->get_param( 'reply_id' ) );
+        $reply_id        = sanitize_text_field( trim( $request->get_param( 'reply_id' ) ) );
         $replies         = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
         $current_user_id = get_current_user_id();
         $is_admin        = current_user_can( 'manage_options' );
@@ -452,7 +454,7 @@ class Shanuman_Visual_Annotation {
         $updated_replies = [];
         $deleted         = false;
         foreach ( $replies as $reply ) {
-            if ( isset( $reply['id'] ) && $reply['id'] === $reply_id ) {
+            if ( isset( $reply['id'] ) && trim( $reply['id'] ) === $reply_id ) {
                 if ( (int) $reply['user_id'] !== $current_user_id && ! $is_admin ) {
                     return new \WP_Error( 'forbidden', 'Only your own replies can be deleted.', [ 'status' => 403 ] );
                 }
@@ -470,12 +472,12 @@ class Shanuman_Visual_Annotation {
 
     public function mark_reply_seen( $request ) {
         $pin_id   = (int) $request->get_param( 'id' );
-        $reply_id = sanitize_text_field( $request->get_param( 'reply_id' ) );
+        $reply_id = sanitize_text_field( trim( $request->get_param( 'reply_id' ) ) );
         $user_id  = get_current_user_id();
         $replies  = get_post_meta( $pin_id, '_shanuman_va_replies', true ) ?: [];
 
         foreach ( $replies as $index => $reply ) {
-            if ( isset( $reply['id'] ) && $reply['id'] === $reply_id ) {
+            if ( isset( $reply['id'] ) && trim( $reply['id'] ) === $reply_id ) {
                 $seen_by = isset( $reply['seen_by'] ) && is_array( $reply['seen_by'] ) ? $reply['seen_by'] : [];
                 if ( ! in_array( $user_id, $seen_by, true ) ) {
                     $seen_by[]                    = $user_id;
