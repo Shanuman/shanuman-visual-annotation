@@ -283,10 +283,25 @@
 				} ) );
 
 				form.querySelectorAll( '.shanuman-va-btn-delete-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => {
+					e.preventDefault();
 					e.stopPropagation();
-					if ( !window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
+					e.stopImmediatePropagation();
+
+					if ( ! window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
 					const replyId = e.target.dataset.id;
-					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( replyId ) }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); loadExistingPins(); } } );
+					
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( replyId ) }`, { 
+						method: 'DELETE', 
+						headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } 
+					} )
+					.then( res => res.json() )
+					.then( data => { 
+						if ( data.replies ) { 
+							pinData.replies = data.replies; 
+							renderThreadContent(); 
+							loadExistingPins(); 
+						} 
+					} );
 				} ) );
 
 				const submitBtn = form.querySelector( '.shanuman-va-submit-reply' );
