@@ -527,14 +527,22 @@ class Shanuman_Visual_Annotation {
         wp_enqueue_style( 'wp-components' );
     }
 
+   /**
+     * Enqueues frontend overlay scripts and dynamic configuration settings.
+     */
     public function enqueue_frontend_assets() {
         $can_load = apply_filters( 'shanuman_va_can_load_frontend', current_user_can( 'edit_posts' ) );
-        if ( ! $can_load ) return;
-        if ( is_archive() || is_search() || is_home() ) return;
+        if ( ! $can_load ) {
+            return;
+        }
+        if ( is_archive() || is_search() || is_home() ) {
+            return;
+        }
 
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only inspection of third-party page builder preview parameters.
         if (
             isset( $_GET['elementor-preview'] ) ||
-            ( isset( $_GET['action'] ) && $_GET['action'] === 'elementor' ) ||
+            ( isset( $_GET['action'] ) && sanitize_text_field( wp_unslash( $_GET['action'] ) ) === 'elementor' ) ||
             isset( $_GET['et_fb'] ) ||
             isset( $_GET['fl_builder'] ) ||
             isset( $_GET['bricks'] ) ||
@@ -545,6 +553,7 @@ class Shanuman_Visual_Annotation {
         ) {
             return;
         }
+        // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
         wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.2', true );
 
