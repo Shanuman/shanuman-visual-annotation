@@ -273,60 +273,67 @@ class Shanuman_Visual_Annotation {
     }
 
     public function get_annotations( $request ) {
-        $meta_query    = [];
-        $show_resolved = $request->get_param( 'show_resolved' ) === 'true';
+    $meta_query    = [];
+    $show_resolved = $request->get_param( 'show_resolved' ) === 'true';
 
-        if ( $request->get_param( 'context' ) !== 'admin' && ! $show_resolved ) {
-            $meta_query[] = [
-                'relation' => 'OR',
-                [ 'key' => '_shanuman_va_status', 'compare' => 'NOT EXISTS' ],
-                [ 'key' => '_shanuman_va_status', 'value' => 'approved', 'compare' => '!=' ],
-            ];
+    if ( $request->get_param( 'context' ) !== 'admin' && ! $show_resolved ) {
+        $meta_query[] = [
+            'relation' => 'OR',
+            [ 'key' => '_shanuman_va_status', 'compare' => 'NOT EXISTS' ],
+            [ 'key' => '_shanuman_va_status', 'value' => 'approved', 'compare' => '!=' ],
+        ];
+    }
+
+    $requested_url = $request->get_param( 'url' );
+    if ( ! empty( $requested_url ) ) {
+        $meta_query[] = [ 'key' => '_shanuman_va_url', 'value' => sanitize_text_field( $requested_url ) ];
+    }
+
+    $args = [
+        'post_type'      => 'shanuman_pin',
+        'posts_per_page' => -1,
+        'post_status'    => 'any',
+    ];
+
+    if ( ! empty( $meta_query ) ) {
+        $args['meta_query'] = $meta_query;
+    }
+
+    $annotations = get_posts( $args );
+    $data        = [];
+
+    foreach ( $annotations as $post ) {
+        $replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
+        $author  = get_userdata( $post->post_author );
+
+        $guest_name = get_post_meta( $post->ID, '_shanuman_va_guest_name', true );
+        if ( empty( $guest_name ) ) {
+            $guest_name = 'Guest Reviewer';
         }
 
-        $requested_url = $request->get_param( 'url' );
-        if ( ! empty( $requested_url ) ) {
-            $meta_query[] = [ 'key' => '_shanuman_va_url', 'value' => sanitize_text_field( $requested_url ) ];
-        }
+        $author_name = $author ? $author->display_name : apply_filters( 'shanuman_va_guest_author_name', $guest_name, $request );
 
-        $args = [
-            'post_type'      => 'shanuman_pin',
-            'posts_per_page' => -1,
-            'post_status'    => 'any',
+        $item = [
+            'id'          => $post->ID,
+            'author_id'   => (int) $post->post_author,
+            'author_name' => $author_name,
+            'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
+            'comment'     => $post->post_content,
+            'replies'     => $replies,
+            'xpath'       => get_post_meta( $post->ID, '_shanuman_va_target_xpath', true ),
+            'percentX'    => get_post_meta( $post->ID, '_shanuman_va_rel_x', true ),
+            'percentY'    => get_post_meta( $post->ID, '_shanuman_va_rel_y', true ),
+            'url'         => get_post_meta( $post->ID, '_shanuman_va_url', true ),
+            'page_title'  => get_post_meta( $post->ID, '_shanuman_va_page_title', true ),
+            'status'      => get_post_meta( $post->ID, '_shanuman_va_status', true ),
+            'flagged'     => get_post_meta( $post->ID, '_shanuman_va_flagged', true ) === 'true',
         ];
 
-        if ( ! empty( $meta_query ) ) {
-            $args['meta_query'] = $meta_query;
-        }
-
-        $annotations = get_posts( $args );
-        $data        = [];
-
-        foreach ( $annotations as $post ) {
-            $replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
-            $author  = get_userdata( $post->post_author );
-
-            $item = [
-                'id'          => $post->ID,
-                'author_id'   => (int) $post->post_author,
-				'author_name' => $author ? $author->display_name : ( get_post_meta( $post->ID, '_shanuman_va_guest_name', true ) ?: 'Guest Reviewer' ),
-                'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
-                'comment'     => $post->post_content,
-                'replies'     => $replies,
-                'xpath'       => get_post_meta( $post->ID, '_shanuman_va_target_xpath', true ),
-                'percentX'    => get_post_meta( $post->ID, '_shanuman_va_rel_x', true ),
-                'percentY'    => get_post_meta( $post->ID, '_shanuman_va_rel_y', true ),
-                'url'         => get_post_meta( $post->ID, '_shanuman_va_url', true ),
-                'page_title'  => get_post_meta( $post->ID, '_shanuman_va_page_title', true ),
-                'status'      => get_post_meta( $post->ID, '_shanuman_va_status', true ),
-                'flagged'     => get_post_meta( $post->ID, '_shanuman_va_flagged', true ) === 'true',
-            ];
-
-            $data[] = apply_filters( 'shanuman_va_annotation_response_item', $item, $post );
-        }
-
-        return rest_ensure_response( $data );
+        $data[] = apply_filters( 'shanuman_va_annotation_response_item', $item, $post );
     }
+
+    return rest_ensure_response( $data );
+}
 
     public function create_annotation( $request ) {
         $comment    = sanitize_textarea_field( $request->get_param( 'comment' ) );
