@@ -309,7 +309,7 @@ class Shanuman_Visual_Annotation {
             $item = [
                 'id'          => $post->ID,
                 'author_id'   => (int) $post->post_author,
-                'author_name' => $author ? $author->display_name : (get_post_meta( $post->ID, '_shanuman_va_guest_name', true ) ?: 'Guest Reviewer');,
+				'author_name' => $author ? $author->display_name : ( get_post_meta( $post->ID, '_shanuman_va_guest_name', true ) ?: 'Guest Reviewer' ),
                 'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
                 'comment'     => $post->post_content,
                 'replies'     => $replies,
