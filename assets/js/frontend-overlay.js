@@ -205,7 +205,6 @@
 
 			const renderThreadContent = () => {
 				const isMainAuthor = Boolean( shanumanVaConfig && parseInt( shanumanVaConfig.currentUserId, 10 ) === parseInt( pinData.author_id, 10 ) );
-				const canDelete = Boolean( shanumanVaConfig && ( isMainAuthor || shanumanVaConfig.isAdmin ) );
 				const isApproved = pinData.status === 'approved';
 				const baseFontSize = isLargeAccessibilityMode ? '15px' : '13px';
 				const smallFontSize = isLargeAccessibilityMode ? '13px' : '11px';
@@ -280,14 +279,14 @@
 					if (btn.disabled) return;
 					const replyId = e.target.dataset.id; const newText = form.querySelector( `.shanuman-va-edit-reply-input[data-id="${ replyId }"]` ).value.trim(); if ( ! newText ) return;
 					btn.textContent = 'Posting...'; btn.disabled = true; btn.style.opacity = '0.6';
-					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: newText } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; editingReplyId = null; renderThreadContent(); loadExistingPins(); } } ).catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( replyId ) }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: newText } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; editingReplyId = null; renderThreadContent(); loadExistingPins(); } } ).catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
 				} ) );
 
 				form.querySelectorAll( '.shanuman-va-btn-delete-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => {
 					e.stopPropagation();
 					if ( !window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
 					const replyId = e.target.dataset.id;
-					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); loadExistingPins(); } } );
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( replyId ) }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); loadExistingPins(); } } );
 				} ) );
 
 				const submitBtn = form.querySelector( '.shanuman-va-submit-reply' );
@@ -305,7 +304,7 @@
 						e.stopPropagation();
 						badge.style.color = '#a7aaad'; badge.style.fontWeight = 'normal'; badge.dataset.unread = 'false';
 						const c = badge.querySelector('.shanuman-va-info-circle'); if(c) c.style.backgroundColor = '#a7aaad';
-						fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ badge.dataset.pinId }/replies/${ badge.dataset.replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then(() => loadExistingPins()).catch(()=>{});
+						fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ badge.dataset.pinId }/replies/${ encodeURIComponent( badge.dataset.replyId ) }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then(() => loadExistingPins()).catch(()=>{});
 					}, { once: true } );
 				});
 			};
@@ -321,7 +320,7 @@
 					if ( pinData.replies ) {
 						pinData.replies.forEach( r => {
 							if ( parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) ) {
-								fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ r.id }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
+								fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( r.id ) }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
 							}
 						});
 					}
