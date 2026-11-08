@@ -1,9 +1,11 @@
 <?php
 /**
  * Plugin Name: Shanuman Visual Annotation
+ * Plugin URI: https://wordpress.org/plugins/shanuman-visual-annotation/
  * Description: A lightweight visual feedback and annotation tool for WordPress.
  * Version: 1.0.1
  * Author: Shanuman
+ * Author URI: https://profiles.wordpress.org/shanuman/
  * Text Domain: shanuman-visual-annotation
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
