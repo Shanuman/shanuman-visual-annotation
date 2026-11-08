@@ -60,27 +60,30 @@ class Shanuman_Visual_Annotation {
             $this->log_action( "Feedback thread deleted (#{$post->ID})." );
         }
     }
+	public function handle_reset_action() {
+		if ( isset( $_POST['shanuman_va_reset_plugin_submit'] ) ) {
+			// Verify the nonce securely before processing any POST data
+			if ( ! isset( $_POST['shanuman_va_reset_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['shanuman_va_reset_nonce'] ) ), 'shanuman_va_reset_action_nonce' ) ) {
+				return; // Exit if nonce verification fails
+			}
 
-    public function handle_reset_action() {
-        if ( isset( $_POST['shanuman_va_reset_plugin_submit'] ) && check_admin_referer( 'shanuman_va_reset_action_nonce', 'shanuman_va_reset_nonce' ) ) {
-            if ( current_user_can( 'manage_options' ) ) {
-                $annotations = get_posts( [
-                    'post_type'      => 'shanuman_pin',
-                    'posts_per_page' => -1,
-                    'post_status'    => 'any',
-                ] );
-                foreach ( $annotations as $ann ) {
-                    wp_delete_post( $ann->ID, true );
-                }
-                update_option( 'shanuman_va_activity_log', [], false );
-                do_action( 'shanuman_va_after_plugin_reset' );
+			if ( current_user_can( 'manage_options' ) ) {
+				$annotations = get_posts( [
+						'post_type'      => 'shanuman_pin',
+						'posts_per_page' => -1,
+						'post_status'    => 'any',
+					] );
+					foreach ( $annotations as $ann ) {
+						wp_delete_post( $ann->ID, true );
+					}
+					update_option( 'shanuman_va_activity_log', [], false );
+					do_action( 'shanuman_va_after_plugin_reset' );
 
-                $this->log_action( 'Plugin data wiped and factory reset executed by administrator.' );
-                add_settings_error( 'shanuman_va_messages', 'shanuman_va_reset_success', 'All annotations, settings, and feedback threads have been permanently wiped.', 'updated' );
-            }
-        }
-    }
-
+					$this->log_action( 'Plugin data wiped and factory reset executed by administrator.' );
+					add_settings_error( 'shanuman_va_messages', 'shanuman_va_reset_success', 'All annotations, settings, and feedback threads have been permanently wiped.', 'updated' );
+			}
+		}
+	}
     public function render_admin_dashboard_content() {
         if ( ! current_user_can( 'edit_posts' ) ) return;
         settings_errors( 'shanuman_va_messages' );
