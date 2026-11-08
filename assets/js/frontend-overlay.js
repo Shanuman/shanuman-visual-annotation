@@ -522,7 +522,12 @@
 			e.target.closest( '.shanuman-va-pin-form' ) || 
 			e.target.closest( '#shanuman-va-dim-btn' ) ||
 			e.target.closest( '#shanuman-va-bottom-right-toolbar' ) ||
-			e.target.closest( '#shanuman-va-bottom-left-toolbar' )
+			e.target.closest( '#shanuman-va-bottom-left-toolbar' ) ||
+			e.target.closest( '.shanuman-va-btn-delete-reply' ) ||
+			e.target.closest( '.shanuman-va-btn-edit-reply' ) ||
+			e.target.closest( '.shanuman-va-btn-save-reply-edit' ) ||
+			e.target.closest( '.shanuman-va-btn-cancel-reply-edit' ) ||
+			e.target.closest( '.shanuman-va-submit-reply' )
 		) {
 			return;
 		}
