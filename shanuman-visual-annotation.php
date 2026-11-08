@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Shanuman Visual Annotation
  * Description: A lightweight visual feedback and annotation tool for WordPress.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Shanuman
  * Text Domain: shanuman-visual-annotation
  * License: GPLv2 or later
@@ -540,14 +540,27 @@ class Shanuman_Visual_Annotation {
         wp_enqueue_style( 'wp-components' );
     }
 
-    /**
-     * Enqueues frontend overlay scripts and localization variables (`shanumanVaConfig`) for editors.
+	/**
+     * Enqueues frontend overlay scripts and localization variables for editors.
      */
     public function enqueue_frontend_assets() {
         if ( ! current_user_can( 'edit_posts' ) ) return;
         if ( is_archive() || is_search() || is_home() ) return;
 
-        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.0', true );
+        // Prevent plugin from loading inside Visual Builder editors
+        if ( 
+            isset( $_GET['elementor-preview'] ) ||          // Elementor
+            isset( $_GET['et_fb'] ) ||                      // Divi
+            isset( $_GET['fl_builder'] ) ||                 // Beaver Builder
+            isset( $_GET['bricks'] ) ||                     // Bricks
+            isset( $_GET['ct_builder'] ) ||                 // Oxygen
+            isset( $_GET['vcv-action'] ) ||                 // Visual Composer
+            isset( $_GET['siteorigin_panels_live_editor'] ) // SiteOrigin
+        ) {
+            return;
+        }
+
+        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.1', true );
         wp_localize_script( 'shanuman-va-frontend', 'shanumanVaConfig', [
             'restUrl'        => esc_url_raw( rest_url() ),
             'nonce'          => wp_create_nonce( 'wp_rest' ),
