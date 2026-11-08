@@ -5,7 +5,7 @@
  * Description: A lightweight visual feedback and annotation tool for WordPress.
  * Version: 1.0.1
  * Author: Shanuman
- * Author URI: https://profiles.wordpress.org/shanuman/
+ * Author URI:
  * Text Domain: shanuman-visual-annotation
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
