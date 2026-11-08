@@ -6,12 +6,12 @@
 	let isShowResolved = false;
 	let isOverlayVisible = true; 
 	let isLargeAccessibilityMode = false; 
-	let isDimmed = true; 
+	let isDimBackgroundActive = false; 
+	let dimBackdropNode = null;
 
 	const alertColor = shanumanVaConfig.attentionColor || '#d63638';
-	const configuredFormWidth = 380; 
+	const configuredFormWidth = parseInt( shanumanVaConfig.formWidth, 10 ) || 340;
 
-	// Inject Mobile Responsive Styles for Toolbars & Forms
 	const responsiveStyle = document.createElement( 'style' );
 	responsiveStyle.innerHTML = `
 		#shanuman-va-bottom-left-toolbar, #shanuman-va-bottom-right-toolbar { 
@@ -38,22 +38,25 @@
 	`;
 	document.head.appendChild( responsiveStyle );
 
+	const hexToRgb = ( hex ) => {
+		let c;
+		if ( /^#([A-Fa-f0-9]{3}){1,2}$/.test( hex ) ) {
+			c = hex.substring(1).split('');
+			if ( c.length === 3 ) { c = [ c[0], c[0], c[1], c[1], c[2], c[2] ]; }
+			c = '0x' + c.join('');
+			return [ (c>>16)&255, (c>>8)&255, c&255 ].join(',');
+		}
+		return '0, 0, 0';
+	};
+
 	const cursorStyle = document.createElement( 'style' );
 	cursorStyle.innerHTML = 'body.shanuman-va-is-annotating * { cursor: crosshair !important; }';
 	document.head.appendChild( cursorStyle );
-
-	// --- Background Dimming Layer ---
-	const dimLayer = document.createElement( 'div' );
-	dimLayer.id = 'shanuman-va-dimming-layer';
-	dimLayer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.4); z-index: 999995; pointer-events: none; transition: opacity 0.3s ease; opacity: 1;';
-	document.body.appendChild( dimLayer );
-	// --------------------------------
 
 	function getActiveFormWidth() {
 		return isLargeAccessibilityMode ? ( configuredFormWidth + 100 ) : configuredFormWidth;
 	}
 
-	// Highlights the target DOM element when hovering or selecting a pin
 	function showHighlight( element ) {
 		if ( ! element ) return;
 		if ( ! highlightBox ) {
@@ -64,7 +67,7 @@
 			highlightBox.style.border = `2px solid ${alertColor}`;
 			highlightBox.style.backgroundColor = 'rgba(214, 54, 56, 0.05)';
 			highlightBox.style.pointerEvents = 'none';
-			highlightBox.style.zIndex = '999997'; // Above Dimmer, Below Pins
+			highlightBox.style.zIndex = '999997';
 			highlightBox.style.transition = 'all 0.2s ease-in-out';
 			document.body.appendChild( highlightBox );
 		}
@@ -78,7 +81,43 @@
 
 	function hideHighlight() { if ( highlightBox ) highlightBox.style.display = 'none'; }
 
-	// Calculates robust XPath identifiers for element anchoring
+	function toggleDimBackdrop( activate ) {
+		isDimBackgroundActive = activate;
+		if ( activate ) {
+			if ( ! dimBackdropNode ) {
+				dimBackdropNode = document.createElement( 'div' );
+				dimBackdropNode.id = 'shanuman-va-dim-backdrop';
+				dimBackdropNode.style.position = 'fixed';
+				dimBackdropNode.style.top = '0';
+				dimBackdropNode.style.left = '0';
+				dimBackdropNode.style.width = '100vw';
+				dimBackdropNode.style.height = '100vh';
+				
+				const dimHex = shanumanVaConfig.dimColor || '#000000';
+				const dimOp = shanumanVaConfig.dimOpacity !== undefined ? shanumanVaConfig.dimOpacity : 0.7;
+				dimBackdropNode.style.backgroundColor = `rgba(${ hexToRgb(dimHex) }, ${ dimOp })`; 
+				dimBackdropNode.style.zIndex = '999990'; 
+				dimBackdropNode.style.pointerEvents = 'auto'; 
+				
+				dimBackdropNode.addEventListener( 'click', () => {
+					document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( ( f ) => ( f.style.display = 'none' ) );
+					hideHighlight();
+					toggleDimBackdrop( false );
+					const dimBtn = document.getElementById( 'shanuman-va-dim-btn' );
+					if ( dimBtn ) { dimBtn.textContent = 'Dim Background'; dimBtn.style.backgroundColor = '#1d2327'; }
+				} );
+				document.body.appendChild( dimBackdropNode );
+			} else {
+				const dimHex = shanumanVaConfig.dimColor || '#000000';
+				const dimOp = shanumanVaConfig.dimOpacity !== undefined ? shanumanVaConfig.dimOpacity : 0.7;
+				dimBackdropNode.style.backgroundColor = `rgba(${ hexToRgb(dimHex) }, ${ dimOp })`; 
+			}
+			dimBackdropNode.style.display = 'block';
+		} else if ( dimBackdropNode ) {
+			dimBackdropNode.style.display = 'none';
+		}
+	}
+
 	function getXPath( element ) {
 		if ( ! element || element.nodeType !== 1 ) return '';
 		if ( element.id && ! element.id.startsWith( 'shanuman-va-' ) ) return `//*[@id="${ element.id }"]`;
@@ -130,12 +169,11 @@
 		form.style.top = `${ Math.round( top ) }px`;
 	}
 
-	// Renders temporary and saved pins onto the viewport overlay
 	function renderTemporaryPin( x, y, pinData ) {
 		let pinBgColor = shanumanVaConfig.buttonColor; 
 		let pinOutline = '2px solid #ffffff'; 
 
-		if ( pinData.status === 'draft' ) pinBgColor = alertColor; 
+		if ( pinData.status === 'draft' ) pinBgColor = alertColor;
 		else if ( pinData.status === 'approved' ) pinBgColor = shanumanVaConfig.accentColor; 
 		else if ( pinData.status === 'reopened' ) { pinBgColor = shanumanVaConfig.buttonColor; pinOutline = '2px solid ' + shanumanVaConfig.reopenColor; }
 
@@ -152,15 +190,14 @@
 			unreadDot.style.cssText = `position: absolute; top: -4px; right: -4px; width: 10px; height: 10px; background-color: ${alertColor}; border-radius: 50%; border: 2px solid #fff; transform: rotate(45deg);`;
 			pin.appendChild( unreadDot );
 		}
+
 		document.body.appendChild( pin );
 		pinData.domNode = pin;
 
 		const form = document.createElement( 'div' );
 		form.className = 'shanuman-va-pin-form';
-		
 		form.style.cssText = `position: absolute; background-color: #ffffff; border: 1px solid ${pinBgColor}; box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: ${isLargeAccessibilityMode ? '18px' : '14px'}; border-radius: 6px; z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: ${isLargeAccessibilityMode ? '16px' : '13px'}; display: ${(pinData.status === 'draft' && isOverlayVisible) ? 'block' : 'none'}; box-sizing: border-box;`;
 		document.body.appendChild( form );
-
 		pinData.formNode = form;
 
 		if ( pinData.status === 'saved' || pinData.status === 'approved' || pinData.status === 'reopened' ) {
@@ -174,7 +211,6 @@
 				const smallFontSize = isLargeAccessibilityMode ? '13px' : '11px';
 				const flagColor = pinData.flagged ? alertColor : '#8c8f94';
 				const flagFill = pinData.flagged ? alertColor : 'none';
-				const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 
 				let threadHtml = `
 					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">
@@ -188,7 +224,7 @@
 								<svg class="shanuman-va-btn-flag" viewBox="0 0 24 24" width="14" height="14" stroke="${flagColor}" stroke-width="2" fill="${flagFill}" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; margin-left: 8px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
 							</div>
 							<div style="display: flex; gap: 8px;">
-								${ !isApproved ? `<button type="button" class="shanuman-va-btn-approve" style="background: none; border: none; color: ${ shanumanVaConfig.accentColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0; font-weight: bold;">Approve</button>` : `<button type="button" class="shanuman-va-btn-reopen" style="background: none; border: none; color: ${ shanumanVaConfig.reopenColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0; font-weight: bold;">Reopen</button>` }
+								${ !isApproved ? `<button type="button" class="shanuman-va-btn-approve" style="background: none; border: none; color: ${ shanumanVaConfig.accentColor }; cursor: pointer; font-size:${ smallFontSize }; padding: 0; font-weight: bold;">Approve</button>` : `<button type="button" class="shanuman-va-btn-reopen" style="background: none; border: none; color: ${ shanumanVaConfig.reopenColor }; cursor: pointer; font-size:${ smallFontSize }; padding: 0; font-weight: bold;">Reopen</button>` }
 							</div>
 						</div>
 						<div style="font-size: ${ baseFontSize }; color: #1d2327; margin-top: 4px; line-height: 1.4;">${ pinData.comment }</div>
@@ -203,7 +239,7 @@
 						const showBadge = isUnread || r.is_edited;
 						const badgeColor = isUnread ? alertColor : '#a7aaad';
 						
-						threadHtml += `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-size: ${ smallFontSize }; color: #646970; display: flex; align-items: center;"><strong>${ r.author_name }</strong>&nbsp;&bull;&nbsp;${ r.date }&nbsp;&bull;&nbsp;${ showBadge ? `<span class="shanuman-va-edited-badge" data-pin-id="${ pinData.id }" data-reply-id="${ r.id }" data-unread="${ isUnread }" title="${ r.is_edited ? 'Original: '+r.original_content : 'Unread' }" style="color: ${ badgeColor }; font-weight: ${ isUnread ? 'bold' : 'normal' }; cursor: help; display: inline-flex; align-items: center; gap: 4px;">${ isUnread && !r.is_edited ? 'New' : 'Edited' } <span class="shanuman-va-info-circle" style="display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; background-color: ${ badgeColor }; color: #fff; border-radius: 50%; font-size: 10px; font-weight: bold;">${ isUnread && !r.is_edited ? '!' : 'i' }</span></span>` : '' }</div><div style="display: flex; gap: 8px;">${ isReplyAuthor && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-edit-reply" data-id="${ r.id }" style="background: none; border: none; color: ${ shanumanVaConfig.buttonColor }; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Edit</button>` : '' }${ canDeleteReply && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-delete-reply" data-id="${ r.id }" style="background: none; border: none; color: #d63638; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Delete</button>` : '' }</div></div>`;
+						threadHtml += `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-size: ${ smallFontSize }; color: #646970; display: flex; align-items: center;"><strong>${ r.author_name }</strong>&nbsp;&bull;&nbsp;${ r.date }&nbsp;&bull;&nbsp;${ showBadge ? `<span class="shanuman-va-edited-badge" data-pin-id="${ pinData.id }" data-reply-id="${ r.id }" data-unread="${ isUnread }" title="${ r.is_edited ? 'Original: '+r.original_content : 'Unread' }" style="color: ${ badgeColor }; font-weight: ${ isUnread ? 'bold' : 'normal' }; cursor: help; display: inline-flex; align-items: center; gap: 4px;">${ isUnread && !r.is_edited ? 'New' : 'Edited' } <span class="shanuman-va-info-circle" style="display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; background-color: ${ badgeColor }; color: #fff; border-radius: 50%; font-size: 10px; font-weight: bold;">${ isUnread && !r.is_edited ? '!' : 'i' }</span></span>` : '' }</div><div style="display: flex; gap: 8px;">${ isReplyAuthor && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-edit-reply" data-id="${ r.id }" style="background: none; border: none; color: ${ shanumanVaConfig.buttonColor }; cursor: pointer; font-size:${ smallFontSize }; padding: 0;">Edit</button>` : '' }${ canDeleteReply && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-delete-reply" data-id="${ r.id }" style="background: none; border: none; color: #d63638; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Delete</button>` : '' }</div></div>`;
 
 						if ( editingReplyId === r.id ) {
 							threadHtml += `<div style="margin-top: 4px;"><textarea class="shanuman-va-edit-reply-input" data-id="${ r.id }" rows="3" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid ${ shanumanVaConfig.buttonColor }; border-radius: 4px;">${ r.content }</textarea><div style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px;"><button type="button" class="shanuman-va-btn-cancel-reply-edit" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Cancel</button><button type="button" class="shanuman-va-btn-save-reply-edit" data-id="${ r.id }" style="background: ${ shanumanVaConfig.buttonColor }; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Save</button></div></div>`;
@@ -218,91 +254,90 @@
 				threadHtml += `<div style="margin-top: 8px;"><textarea class="shanuman-va-reply-input" placeholder="Write a reply or status update..." rows="${ isLargeAccessibilityMode ? '4' : '2' }" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid #8c8f94; border-radius: 4px;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;"><button type="button" class="shanuman-va-submit-reply" style="background: ${ shanumanVaConfig.buttonColor }; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${ baseFontSize }; cursor: pointer; transition: opacity 0.2s ease;">Reply</button></div></div>`;
 				form.innerHTML = threadHtml;
 
-				form.querySelector( '.shanuman-va-btn-flag' ).addEventListener( 'click', () => {
-					pinData.flagged = !pinData.flagged; renderThreadContent(); fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
+				form.querySelector( '.shanuman-va-btn-flag' ).addEventListener( 'click', (e) => {
+					e.stopPropagation();
+					pinData.flagged = !pinData.flagged; renderThreadContent(); fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then(() => loadExistingPins()).catch(()=>{});
 				});
 
 				const accessToggle = form.querySelector( '.shanuman-va-accessibility-toggle' );
-				if ( accessToggle ) accessToggle.addEventListener( 'click', () => { 
+				if ( accessToggle ) accessToggle.addEventListener( 'click', (e) => { 
+					e.stopPropagation();
 					isLargeAccessibilityMode = ! isLargeAccessibilityMode; 
 					updateFormPosition( form, parseInt(pin.style.left)+12, parseInt(pin.style.top)+24 );
-					loadExistingPins( false ); 
+					loadExistingPins(); 
 				} );
 
 				const approveBtn = form.querySelector( '.shanuman-va-btn-approve' );
-				if ( approveBtn ) approveBtn.addEventListener( 'click', () => { approveBtn.textContent = '...'; fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/approve`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( () => { pinData.status = 'approved'; loadExistingPins( false ); } ); } );
+				if ( approveBtn ) approveBtn.addEventListener( 'click', (e) => { e.stopPropagation(); approveBtn.textContent = '...'; fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/approve`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( () => { pinData.status = 'approved'; loadExistingPins(); } ); } );
 
 				const reopenBtn = form.querySelector( '.shanuman-va-btn-reopen' );
-				if ( reopenBtn ) reopenBtn.addEventListener( 'click', () => { reopenBtn.textContent = '...'; fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/reopen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( () => { pinData.status = 'reopened'; loadExistingPins( false ); } ); } );
+				if ( reopenBtn ) reopenBtn.addEventListener( 'click', (e) => { e.stopPropagation(); reopenBtn.textContent = '...'; fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/reopen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( () => { pinData.status = 'reopened'; loadExistingPins(); } ); } );
 
 				form.querySelectorAll( '.shanuman-va-btn-edit-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => { e.preventDefault(); e.stopPropagation(); editingReplyId = e.target.dataset.id; renderThreadContent(); } ) );
 				form.querySelectorAll( '.shanuman-va-btn-cancel-reply-edit' ).forEach( btn => btn.addEventListener( 'click', ( e ) => { e.preventDefault(); e.stopPropagation(); editingReplyId = null; renderThreadContent(); } ) );
 				form.querySelectorAll( '.shanuman-va-btn-save-reply-edit' ).forEach( btn => btn.addEventListener( 'click', ( e ) => {
+					e.stopPropagation();
 					if (btn.disabled) return;
 					const replyId = e.target.dataset.id; const newText = form.querySelector( `.shanuman-va-edit-reply-input[data-id="${ replyId }"]` ).value.trim(); if ( ! newText ) return;
 					btn.textContent = 'Posting...'; btn.disabled = true; btn.style.opacity = '0.6';
-					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: newText } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; editingReplyId = null; renderThreadContent(); } } ).catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: newText } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; editingReplyId = null; renderThreadContent(); loadExistingPins(); } } ).catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
 				} ) );
 
 				form.querySelectorAll( '.shanuman-va-btn-delete-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => {
-					e.preventDefault(); e.stopPropagation();
+					e.stopPropagation();
 					if ( !window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
 					const replyId = e.target.dataset.id;
-					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); } } );
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ replyId }`, { method: 'DELETE', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); loadExistingPins(); } } );
 				} ) );
 
 				const submitBtn = form.querySelector( '.shanuman-va-submit-reply' );
 				const replyInput = form.querySelector( '.shanuman-va-reply-input' );
-				if ( submitBtn && replyInput ) submitBtn.addEventListener( 'click', () => {
+				if ( submitBtn && replyInput ) submitBtn.addEventListener( 'click', (e) => {
+					e.stopPropagation();
 					if (submitBtn.disabled) return;
 					const txt = replyInput.value.trim(); if ( !txt ) return;
 					submitBtn.textContent = 'Posting...'; submitBtn.disabled = true; submitBtn.style.opacity = '0.6';
-					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: txt } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); } } ).catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; });
+					fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { reply: txt } ) } ).then( res => res.json() ).then( data => { if ( data.replies ) { pinData.replies = data.replies; renderThreadContent(); loadExistingPins(); } } ).catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; });
 				});
 
 				form.querySelectorAll( '.shanuman-va-edited-badge' ).forEach( badge => {
-					if ( badge.dataset.unread === 'true' ) badge.addEventListener( 'mouseenter', () => {
+					if ( badge.dataset.unread === 'true' ) badge.addEventListener( 'mouseenter', (e) => {
+						e.stopPropagation();
 						badge.style.color = '#a7aaad'; badge.style.fontWeight = 'normal'; badge.dataset.unread = 'false';
 						const c = badge.querySelector('.shanuman-va-info-circle'); if(c) c.style.backgroundColor = '#a7aaad';
-						fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ badge.dataset.pinId }/replies/${ badge.dataset.replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
+						fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ badge.dataset.pinId }/replies/${ badge.dataset.replyId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).then(() => loadExistingPins()).catch(()=>{});
 					}, { once: true } );
 				});
 			};
 
 			renderThreadContent();
 
-			if ( pin ) {
-				pin.addEventListener( 'click', ( e ) => {
-					e.stopPropagation();
-					const isVisible = form.style.display === 'block';
-					document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => f.style.display = 'none' );
-					
-					if ( ! isVisible ) {
-						form.style.display = 'block';
-						if ( pinData.replies ) {
-							pinData.replies.forEach( r => {
-								const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
-								const seenBy = Array.isArray( r.seen_by ) ? r.seen_by : [];
-								if ( parseInt( r.user_id, 10 ) !== currentUserId && !seenBy.includes( currentUserId ) ) {
-									fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ r.id }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
-									r.seen_by = [ ...seenBy, currentUserId ];
-								}
-							});
-						}
-						const dot = pin.querySelector('.shanuman-va-unread-dot'); if (dot) dot.remove();
-						const elRect = pinData.element.getBoundingClientRect();
-						updateFormPosition( form, elRect.left + window.scrollX + (elRect.width * (pinData.percentX/100)), elRect.top + window.scrollY + (elRect.height * (pinData.percentY/100)) );
-						showHighlight( pinData.element );
-					} else { form.style.display = 'none'; hideHighlight(); }
-				} );
-			}
-
+			pin.addEventListener( 'click', ( e ) => {
+				e.stopPropagation();
+				const isVisible = form.style.display === 'block';
+				document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => f.style.display = 'none' );
+				if ( ! isVisible ) {
+					form.style.display = 'block';
+					if ( pinData.replies ) {
+						pinData.replies.forEach( r => {
+							if ( parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) ) {
+								fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ r.id }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch(()=>{});
+							}
+						});
+					}
+					const dot = pin.querySelector('.shanuman-va-unread-dot'); if (dot) dot.remove();
+					const elRect = pinData.element.getBoundingClientRect();
+					updateFormPosition( form, elRect.left + window.scrollX + (elRect.width * (pinData.percentX/100)), elRect.top + window.scrollY + (elRect.height * (pinData.percentY/100)) );
+					showHighlight( pinData.element );
+				} else { form.style.display = 'none'; hideHighlight(); }
+			} );
 		} else {
 			const bFS = isLargeAccessibilityMode ? '15px' : '13px'; const sFS = isLargeAccessibilityMode ? '13px' : '11px'; const pS = isLargeAccessibilityMode ? '10px' : '6px';
 			form.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;"><button type="button" class="shanuman-va-accessibility-toggle" style="background: #f0f0f1; border: 1px solid #8c8f94; border-radius: 4px; padding: 2px 8px; font-size: ${sFS}; cursor: pointer; font-weight: bold;">${ isLargeAccessibilityMode ? 'Standard Size' : 'A+ Larger View' }</button><span style="font-size: ${sFS}; font-weight: bold;">New Feedback</span></div><textarea class="shanuman-va-new-comment" placeholder="Add your comment..." rows="${ isLargeAccessibilityMode ? '5' : '3' }" style="width: 100%; box-sizing: border-box; font-size: ${bFS}; padding: ${pS}; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;"><button type="button" class="shanuman-va-btn-cancel" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer;">Cancel</button><button type="button" class="shanuman-va-btn-save" style="background: ${shanumanVaConfig.buttonColor}; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer; transition: opacity 0.2s ease;">Save</button></div>`;
 			
 			const accTgl = form.querySelector('.shanuman-va-accessibility-toggle');
-			if(accTgl) accTgl.addEventListener('click', () => { 
+			if(accTgl) accTgl.addEventListener('click', (e) => { 
+				e.stopPropagation();
 				isLargeAccessibilityMode = !isLargeAccessibilityMode; 
 				const txt = form.querySelector('.shanuman-va-new-comment').value; 
 				pin.remove(); 
@@ -313,153 +348,136 @@
 				updateFormPosition( pinData.formNode, parseInt(pin.style.left)+12, parseInt(pin.style.top)+24 ); 
 			});
 
-			form.querySelector('.shanuman-va-btn-cancel').addEventListener('click', () => { pin.remove(); form.remove(); hideHighlight(); const idx = activePins.indexOf(pinData); if(idx > -1) activePins.splice(idx, 1); });
+			form.querySelector('.shanuman-va-btn-cancel').addEventListener('click', (e) => { e.stopPropagation(); pin.remove(); form.remove(); hideHighlight(); const idx = activePins.indexOf(pinData); if(idx > -1) activePins.splice(idx, 1); });
 			form.querySelector('.shanuman-va-btn-save').addEventListener('click', (e) => {
+				e.stopPropagation();
 				if (e.target.disabled) return;
 				const cmt = form.querySelector('.shanuman-va-new-comment').value.trim(); if(!cmt) return;
 				e.target.textContent = 'Posting...'; e.target.disabled = true; e.target.style.opacity = '0.6';
-				fetch( `${shanumanVaConfig.restUrl}shanuman-va/v1/annotations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { comment: cmt, xpath: pinData.xpath, percentX: pinData.percentX, percentY: pinData.percentY, url: window.location.pathname, page_title: document.title } ) } )
-                .then( res => res.json() )
-                .then( data => { 
-					pin.remove(); 
-					form.remove(); 
-					hideHighlight(); 
-					const idx = activePins.indexOf(pinData); 
-					if(idx > -1) activePins.splice(idx, 1); 
-					loadExistingPins(); 
-				} ).catch(()=>{ e.target.textContent = 'Save'; e.target.disabled = false; e.target.style.opacity = '1'; });
+				fetch( `${shanumanVaConfig.restUrl}shanuman-va/v1/annotations`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': shanumanVaConfig.nonce }, body: JSON.stringify( { comment: cmt, xpath: pinData.xpath, percentX: pinData.percentX, percentY: pinData.percentY, url: window.location.pathname, page_title: document.title } ) } ).then( () => { pin.remove(); form.remove(); hideHighlight(); loadExistingPins(); } ).catch(()=>{ e.target.textContent = 'Save'; e.target.disabled = false; e.target.style.opacity = '1'; });
 			});
 		}
-		
+
 		if ( form.style.display === 'block' ) updateFormPosition( form, x, y );
 		return pin;
 	}
 
-	function loadExistingPins( isInitialLoad = false ) {
-		const hasDraft = activePins.some( p => p.status === 'draft' ); if ( !isInitialLoad && hasDraft ) return;
-		fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations?url=${ encodeURIComponent(window.location.pathname) }&show_resolved=${ isShowResolved }&t=${ new Date().getTime() }`, { headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } )
+	function loadExistingPins() {
+		const currentUrl = encodeURIComponent( window.location.pathname );
+		const cacheBuster = new Date().getTime();
+
+		fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations?url=${ currentUrl }&show_resolved=${ isShowResolved }&t=${ cacheBuster }`, { 
+			headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } 
+		} )
 		.then( res => res.json() ).then( data => {
 			if ( ! Array.isArray( data ) ) return;
-			
-			let targetPinId = activePins.find( p => p.formNode && p.formNode.style.display === 'block' )?.id;
-			if ( isInitialLoad ) {
-				const urlParams = new URLSearchParams(window.location.search);
-				const paramPin = parseInt(urlParams.get('wp_va_open_pin'), 10);
-				if ( paramPin ) targetPinId = paramPin;
-			}
-
-			activePins.forEach( pin => { if(pin.domNode) pin.domNode.remove(); if(pin.formNode) pin.formNode.remove(); } ); activePins.length = 0; hideHighlight();
+			activePins.forEach( pin => { if(pin.domNode) pin.domNode.remove(); if(pin.formNode) pin.formNode.remove(); } );
+			activePins.length = 0; hideHighlight();
 
 			data.forEach( savedPin => {
 				let el = null; try { el = document.evaluate( savedPin.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null ).singleNodeValue; } catch ( e ) {}
-				
-				if ( el ) {
-					const pinData = { ...savedPin, percentX: parseFloat(savedPin.percentX), percentY: parseFloat(savedPin.percentY), element: el, domNode: null, formNode: null };
-					const r = el.getBoundingClientRect(); const absX = r.left + window.scrollX + ( r.width * ( parseFloat(savedPin.percentX)/100 ) ); const absY = r.top + window.scrollY + ( r.height * ( parseFloat(savedPin.percentY)/100 ) );
-					pinData.domNode = renderTemporaryPin( absX, absY, pinData ); 
-					activePins.push( pinData );
-				}
-			});
-
-			if ( targetPinId ) { 
-				const rp = activePins.find( p => p.id === targetPinId ); 
-				if ( rp && isOverlayVisible ) { 
-					if ( isInitialLoad ) {
-						setTimeout(() => {
-							rp.element.scrollIntoView({ behavior: 'auto', block: 'center' });
-						}, 50);
-
-						setTimeout(() => {
-							rp.formNode.style.display = 'block'; 
-							showHighlight( rp.element ); 
-							const r = rp.element.getBoundingClientRect();
-							const absX = r.left + window.scrollX + (r.width * (rp.percentX / 100));
-							const absY = r.top + window.scrollY + (r.height * (rp.percentY / 100));
-							updateFormPosition( rp.formNode, absX, absY );
-						}, 150);
-					} else {
-						rp.formNode.style.display = 'block'; 
-						showHighlight( rp.element ); 
-						const r = rp.element.getBoundingClientRect();
-						const absX = r.left + window.scrollX + (r.width * (rp.percentX / 100));
-						const absY = r.top + window.scrollY + (r.height * (rp.percentY / 100));
-						updateFormPosition( rp.formNode, absX, absY ); 
-					}
-				} 
-			}
-		});
+				if ( ! el ) return;
+				const r = el.getBoundingClientRect();
+				const absX = r.left + window.scrollX + ( r.width * ( parseFloat(savedPin.percentX)/100 ) );
+				const absY = r.top + window.scrollY + ( r.height * ( parseFloat(savedPin.percentY)/100 ) );
+				const pinData = { ...savedPin, element: el, domNode: null, formNode: null };
+				pinData.domNode = renderTemporaryPin( absX, absY, pinData );
+				activePins.push( pinData );
+			} );
+		} );
 	}
 
 	function createBottomRightToolbar() {
 		if ( document.getElementById( 'shanuman-va-bottom-right-toolbar' ) ) return;
-		const tb = document.createElement('div'); tb.id = 'shanuman-va-bottom-right-toolbar'; tb.style.cssText = 'position: fixed !important; z-index: 999999 !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important;';
-		
-		const resBtn = document.createElement('button'); resBtn.id = 'shanuman-va-toggle-resolved-btn'; resBtn.textContent = 'Show Approved'; resBtn.style.cssText = `background-color: #fff; color: #2c3338; border: 1px solid #8c8f94; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
-		resBtn.addEventListener('click', (e) => { e.stopPropagation(); isShowResolved = !isShowResolved; resBtn.textContent = isShowResolved ? 'Hide Approved' : 'Show Approved'; resBtn.style.backgroundColor = isShowResolved ? '#f3fcf4' : '#fff'; resBtn.style.borderColor = isShowResolved ? shanumanVaConfig.accentColor : '#8c8f94'; resBtn.style.color = isShowResolved ? shanumanVaConfig.accentColor : '#2c3338'; loadExistingPins(); });
+		const tb = document.createElement( 'div' );
+		tb.id = 'shanuman-va-bottom-right-toolbar';
+		tb.style.cssText = 'position: fixed !important; z-index: 999999 !important; display: flex !important; gap: 10px !important; align-items: center !important;';
 
-		const addBtn = document.createElement('button'); addBtn.id = 'shanuman-va-toggle-btn'; addBtn.textContent = 'Add Comment'; addBtn.style.cssText = `background-color: ${shanumanVaConfig.buttonColor}; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
-		addBtn.addEventListener('click', (e) => { 
-			e.stopPropagation(); 
-			isAnnotating = !isAnnotating; 
-			addBtn.textContent = isAnnotating ? 'Exit Commenting' : 'Add Comment'; 
-			addBtn.style.backgroundColor = isAnnotating ? alertColor : shanumanVaConfig.buttonColor; 
-			if(isAnnotating) document.body.classList.add('shanuman-va-is-annotating'); 
-			else { document.body.classList.remove('shanuman-va-is-annotating'); hideHighlight(); } 
-		});
+		const resBtn = document.createElement( 'button' );
+		resBtn.id = 'shanuman-va-toggle-resolved-btn';
+		resBtn.textContent = 'Show Approved';
+		resBtn.style.cssText = `background-color: #fff; color: #2c3338; border: 1px solid #8c8f94; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-family: sans-serif; font-size: 14px; display: ${isOverlayVisible ? 'block' : 'none'};`;
+		resBtn.addEventListener( 'click', (e) => {
+			e.stopPropagation();
+			isShowResolved = !isShowResolved;
+			resBtn.textContent = isShowResolved ? 'Hide Approved' : 'Show Approved';
+			resBtn.style.borderColor = isShowResolved ? shanumanVaConfig.accentColor : '#8c8f94';
+			resBtn.style.color = isShowResolved ? shanumanVaConfig.accentColor : '#2c3338';
+			loadExistingPins();
+		} );
 
-		tb.appendChild(resBtn); tb.appendChild(addBtn); document.body.appendChild(tb);
+		const addBtn = document.createElement( 'button' );
+		addBtn.id = 'shanuman-va-toggle-btn';
+		addBtn.textContent = 'Add Comment';
+		addBtn.style.cssText = `background-color: ${shanumanVaConfig.buttonColor}; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; display: ${isOverlayVisible ? 'block' : 'none'};`;
+		addBtn.addEventListener( 'click', (e) => {
+			e.stopPropagation();
+			isAnnotating = !isAnnotating;
+			addBtn.textContent = isAnnotating ? 'Exit Commenting' : 'Add Comment';
+			addBtn.style.backgroundColor = isAnnotating ? alertColor : shanumanVaConfig.buttonColor;
+			if ( isAnnotating ) document.body.classList.add( 'shanuman-va-is-annotating' );
+			else { document.body.classList.remove( 'shanuman-va-is-annotating' ); hideHighlight(); }
+		} );
+
+		tb.appendChild( resBtn );
+		tb.appendChild( addBtn );
+		document.body.appendChild( tb );
 	}
 
 	function createBottomLeftToolbar() {
 		if ( document.getElementById( 'shanuman-va-bottom-left-toolbar' ) ) return;
-		const tb = document.createElement('div'); tb.id = 'shanuman-va-bottom-left-toolbar'; tb.style.cssText = 'position: fixed !important; z-index: 999999 !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 10px !important;';
-		
-		const mastBtn = document.createElement('button'); mastBtn.id = 'shanuman-va-master-toggle-btn'; mastBtn.textContent = 'Hide Annotations'; mastBtn.style.cssText = 'background-color: #1d2327; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px; white-space: nowrap !important;';
-		
-		// --- Toggle Dimming Button ---
-		const dimBtn = document.createElement('button');
-		dimBtn.id = 'shanuman-va-dim-toggle-btn';
-		dimBtn.textContent = isDimmed ? 'Remove Dim' : 'Dim Background';
-		dimBtn.style.cssText = `background-color: #fff; color: #2c3338; border: 1px solid #8c8f94; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-family: sans-serif; font-size: 14px; white-space: nowrap !important; display: ${isOverlayVisible ? 'block' : 'none'};`;
+		const tb = document.createElement( 'div' );
+		tb.id = 'shanuman-va-bottom-left-toolbar';
+		tb.style.cssText = 'position: fixed !important; z-index: 999999 !important; display: flex !important; gap: 10px !important; align-items: center !important;';
 
-		dimBtn.addEventListener('click', (e) => {
+		const mastBtn = document.createElement( 'button' );
+		mastBtn.id = 'shanuman-va-master-toggle-btn';
+		mastBtn.textContent = 'Hide Annotations';
+		mastBtn.style.cssText = 'background-color: #1d2327; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px;';
+		mastBtn.addEventListener( 'click', (e) => {
 			e.stopPropagation();
-			isDimmed = !isDimmed;
-			dimBtn.textContent = isDimmed ? 'Remove Dim' : 'Dim Background';
-			const dimmer = document.getElementById('shanuman-va-dimming-layer');
-			if (dimmer) dimmer.style.opacity = (isOverlayVisible && isDimmed) ? '1' : '0';
-		});
-		// ----------------------------------
+			isOverlayVisible = !isOverlayVisible;
+			mastBtn.textContent = isOverlayVisible ? 'Hide Annotations' : 'Show Annotations';
 
-		mastBtn.addEventListener('click', (e) => {
-			e.stopPropagation(); isOverlayVisible = !isOverlayVisible; mastBtn.textContent = isOverlayVisible ? 'Hide Annotations' : 'Show Annotations';
-			
-			const rightToolbar = document.getElementById('shanuman-va-bottom-right-toolbar');
-			if (rightToolbar) rightToolbar.style.setProperty('display', isOverlayVisible ? 'flex' : 'none', 'important');
-			
-			// Toggle dimming button visibility
-			dimBtn.style.display = isOverlayVisible ? 'block' : 'none';
+			const rightToolbar = document.getElementById( 'shanuman-va-bottom-right-toolbar' );
+			if ( rightToolbar ) rightToolbar.style.setProperty( 'display', isOverlayVisible ? 'flex' : 'none', 'important' );
 
-			// Toggle the dimming layer opacity based on both states
-			const dimmer = document.getElementById('shanuman-va-dimming-layer');
-			if (dimmer) dimmer.style.opacity = (isOverlayVisible && isDimmed) ? '1' : '0';
-			
-			activePins.forEach( p => { if(p.domNode) p.domNode.style.display = isOverlayVisible ? 'block' : 'none'; if(!isOverlayVisible && p.formNode) p.formNode.style.display = 'none'; });
-			
-			if(!isOverlayVisible) { 
-				hideHighlight(); 
-				if(isAnnotating) { 
-					isAnnotating = false; 
-					document.body.classList.remove('shanuman-va-is-annotating'); 
-					const ab = document.getElementById('shanuman-va-toggle-btn'); 
-					if(ab) { ab.textContent = 'Add Comment'; ab.style.backgroundColor = shanumanVaConfig.buttonColor; } 
-				} 
+			const dimBtnEl = document.getElementById( 'shanuman-va-dim-btn' );
+			if ( dimBtnEl ) dimBtnEl.style.setProperty( 'display', isOverlayVisible ? 'block' : 'none', 'important' );
+
+			activePins.forEach( p => {
+				if ( p.domNode ) p.domNode.style.display = isOverlayVisible ? 'block' : 'none';
+				if ( ! isOverlayVisible && p.formNode ) p.formNode.style.display = 'none';
+			} );
+
+			if ( ! isOverlayVisible ) {
+				hideHighlight();
+				toggleDimBackdrop( false );
+				if ( dimBtnEl ) { dimBtnEl.textContent = 'Dim Background'; dimBtnEl.style.backgroundColor = '#1d2327'; }
+				if ( isAnnotating ) {
+					isAnnotating = false;
+					document.body.classList.remove( 'shanuman-va-is-annotating' );
+					const ab = document.getElementById( 'shanuman-va-toggle-btn' );
+					if ( ab ) { ab.textContent = 'Add Comment'; ab.style.backgroundColor = shanumanVaConfig.buttonColor; }
+				}
 			}
-		});
+		} );
 
-		tb.appendChild(mastBtn); 
-		tb.appendChild(dimBtn); 
-		document.body.appendChild(tb);
+		const dimBtn = document.createElement( 'button' );
+		dimBtn.id = 'shanuman-va-dim-btn';
+		dimBtn.textContent = 'Dim Background';
+		dimBtn.style.cssText = 'background-color: #1d2327; color: #fff; border: none; border-radius: 20px; padding: 10px 18px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-family: sans-serif; font-size: 14px;';
+		dimBtn.addEventListener( 'click', (e) => {
+			e.stopPropagation();
+			const n = ! isDimBackgroundActive;
+			toggleDimBackdrop( n );
+			dimBtn.textContent = n ? 'Undim Background' : 'Dim Background';
+			dimBtn.style.backgroundColor = n ? shanumanVaConfig.buttonColor : '#1d2327';
+		} );
+
+		tb.appendChild( mastBtn );
+		tb.appendChild( dimBtn );
+		document.body.appendChild( tb );
 	}
 
 	document.addEventListener( 'click', ( e ) => {
@@ -467,36 +485,51 @@
 		if ( e.target.closest('#shanuman-va-bottom-right-toolbar') || e.target.closest('#shanuman-va-bottom-left-toolbar') || e.target.closest('.shanuman-va-pin') || e.target.closest('.shanuman-va-pin-form') ) return;
 		e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 		const r = e.target.getBoundingClientRect();
-		const pinData = { xpath: getXPath(e.target), percentX: (((e.clientX - r.left)/r.width)*100).toFixed(2), percentY: (((e.clientY - r.top)/r.height)*100).toFixed(2), element: e.target, domNode: null, formNode: null, comment: '', status: 'draft', flagged: false };
+		const pinData = { xpath: getXPath(e.target), percentX: (((e.clientX - r.left)/r.width)*100).toFixed(2), percentY: (((e.clientY - r.top)/r.height)*100).toFixed(2), element: e.target, domNode: null, formNode: null, status: 'draft' };
 		showHighlight( e.target );
-		pinData.domNode = renderTemporaryPin( e.pageX, e.pageY, pinData ); activePins.push( pinData );
+		pinData.domNode = renderTemporaryPin( e.pageX, e.pageY, pinData );
+		activePins.push( pinData );
 	}, true );
 
-	document.addEventListener( 'click', ( e ) => {
-		if ( !e.target.closest('.shanuman-va-pin') && !e.target.closest('.shanuman-va-pin-form') ) {
-			let closed = false;
-			document.querySelectorAll('.shanuman-va-pin-form').forEach( f => {
-				const p = activePins.find( x => x.formNode === f );
-				if(p && p.status !== 'draft' && f.style.display === 'block') { f.style.display = 'none'; closed = true; }
-			});
-			if(closed){ hideHighlight(); }
+	loadExistingPins();
+	createBottomRightToolbar();
+	createBottomLeftToolbar();
+
+	window.addEventListener( 'focus', () => loadExistingPins() );
+	document.addEventListener( 'visibilitychange', () => {
+		if ( document.visibilityState === 'visible' ) {
+			loadExistingPins();
 		}
 	} );
 
-	let resizeTimeout;
-	window.addEventListener( 'resize', () => {
-		clearTimeout( resizeTimeout );
-		resizeTimeout = setTimeout( () => {
-			activePins.forEach( p => {
-				if(!p.element || !p.domNode || !p.formNode) return;
-				const r = p.element.getBoundingClientRect(); const absX = r.left + window.scrollX + (r.width*(p.percentX/100)); const absY = r.top + window.scrollY + (r.height*(p.percentY/100));
-				p.domNode.style.left = `${Math.round(absX-12)}px`; p.domNode.style.top = `${Math.round(absY-24)}px`;
-				if(p.formNode.style.display === 'block') { updateFormPosition(p.formNode, absX, absY); showHighlight(p.element); }
-			});
-		}, 150 );
-	} );
+	document.addEventListener( 'click', ( e ) => {
+		if ( 
+			e.target.closest( '.shanuman-va-pin' ) || 
+			e.target.closest( '.shanuman-va-pin-form' ) || 
+			e.target.closest( '#shanuman-va-dim-btn' ) ||
+			e.target.closest( '#shanuman-va-bottom-right-toolbar' ) ||
+			e.target.closest( '#shanuman-va-bottom-left-toolbar' )
+		) {
+			return;
+		}
 
-	loadExistingPins( true ); createBottomRightToolbar(); createBottomLeftToolbar();
-	window.addEventListener( 'focus', () => loadExistingPins( false ) );
-	document.addEventListener( 'visibilitychange', () => { if ( document.visibilityState === 'visible' ) loadExistingPins( false ); } );
+		let closed = false;
+		document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => {
+			const p = activePins.find( x => x.formNode === f );
+			if ( p && p.status !== 'draft' && f.style.display === 'block' ) { 
+				f.style.display = 'none'; 
+				closed = true; 
+			}
+		} );
+
+		if ( closed ) { 
+			hideHighlight(); 
+			toggleDimBackdrop( false ); 
+			const db = document.getElementById( 'shanuman-va-dim-btn' ); 
+			if ( db ) { 
+				db.textContent = 'Dim Background'; 
+				db.style.backgroundColor = '#1d2327'; 
+			} 
+		}
+	} );
 } )();
