@@ -1,6 +1,6 @@
 /* global shanumanVaConfig */
 ( function () {
-	// 1. Dynamic Configuration Extraction from Pro Add-on (with safe fallbacks)
+	// 1. Dynamic Configuration Extraction from Pro Add-on
 	const cfg = typeof shanumanVaConfig !== 'undefined' ? shanumanVaConfig : {};
 	const primaryColor    = cfg.buttonColor || '#2271b1';
 	const accentColor     = cfg.accentColor || '#46b450';
@@ -18,6 +18,7 @@
 	let isLargeAccessibilityMode = false; 
 	let isDimBackgroundActive = false; 
 	let dimBackdropNode = null;
+	let isMutating = false; // Prevents focus listeners from racing during confirm/actions
 
 	const responsiveStyle = document.createElement( 'style' );
 	responsiveStyle.innerHTML = `
@@ -299,7 +300,7 @@
 				form.querySelectorAll( '.shanuman-va-btn-edit-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => { 
 					e.preventDefault(); 
 					e.stopPropagation(); 
-					editingReplyId = e.target.dataset.id; 
+					editingReplyId = btn.dataset.id; 
 					renderThreadContent(); 
 				} ) );
 
@@ -314,13 +315,14 @@
 					e.preventDefault();
 					e.stopPropagation();
 					if ( btn.disabled ) return;
-					const replyId = e.target.dataset.id; 
+					const replyId = btn.dataset.id; 
 					const newText = form.querySelector( `.shanuman-va-edit-reply-input[data-id="${ replyId }"]` ).value.trim(); 
 					if ( ! newText ) return;
 					
 					btn.textContent = 'Posting...'; 
 					btn.disabled = true; 
 					btn.style.opacity = '0.6';
+					isMutating = true;
 					
 					fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( replyId ) }`, { 
 						method: 'POST', 
@@ -329,13 +331,14 @@
 					} )
 					.then( res => res.json() )
 					.then( data => { 
-						if ( data.replies ) { 
-							pinData.replies = data.replies; 
+						if ( data && data.replies !== undefined ) { 
+							pinData.replies = Array.isArray( data.replies ) ? data.replies : Object.values( data.replies ); 
 							editingReplyId = null; 
 							renderThreadContent(); 
 						} 
 					} )
-					.catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; });
+					.catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; })
+					.finally(() => { isMutating = false; });
 				} ) );
 
 				form.querySelectorAll( '.shanuman-va-btn-delete-reply' ).forEach( btn => btn.addEventListener( 'click', ( e ) => {
@@ -343,8 +346,16 @@
 					e.stopPropagation();
 					e.stopImmediatePropagation();
 
-					if ( ! window.confirm( 'Are you sure you want to delete this reply?' ) ) return;
-					const replyId = e.target.dataset.id;
+					isMutating = true;
+					const confirmed = window.confirm( 'Are you sure you want to delete this reply?' );
+					if ( ! confirmed ) {
+						isMutating = false;
+						return;
+					}
+
+					const replyId = btn.dataset.id;
+					btn.textContent = '...';
+					btn.style.pointerEvents = 'none';
 					
 					fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies/${ encodeURIComponent( replyId ) }`, { 
 						method: 'DELETE', 
@@ -352,11 +363,14 @@
 					} )
 					.then( res => res.json() )
 					.then( data => { 
-						if ( data.replies ) { 
-							pinData.replies = data.replies; 
+						if ( data && data.replies !== undefined ) { 
+							pinData.replies = Array.isArray( data.replies ) ? data.replies : Object.values( data.replies ); 
 							renderThreadContent(); 
 						} 
-					} );
+					} )
+					.finally(() => {
+						isMutating = false;
+					});
 				} ) );
 
 				const submitBtn = form.querySelector( '.shanuman-va-submit-reply' );
@@ -371,6 +385,7 @@
 					submitBtn.textContent = 'Posting...'; 
 					submitBtn.disabled = true; 
 					submitBtn.style.opacity = '0.6';
+					isMutating = true;
 					
 					fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ pinData.id }/replies`, { 
 						method: 'POST', 
@@ -379,8 +394,8 @@
 					} )
 					.then( res => res.json() )
 					.then( data => { 
-						if ( data.replies ) { 
-							pinData.replies = data.replies; 
+						if ( data && data.replies !== undefined ) { 
+							pinData.replies = Array.isArray( data.replies ) ? data.replies : Object.values( data.replies ); 
 							replyInput.value = '';
 							submitBtn.textContent = 'Reply';
 							submitBtn.disabled = false;
@@ -388,7 +403,8 @@
 							renderThreadContent(); 
 						} 
 					} )
-					.catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; });
+					.catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; })
+					.finally(() => { isMutating = false; });
 				});
 
 				form.querySelectorAll( '.shanuman-va-edited-badge' ).forEach( badge => {
@@ -470,6 +486,7 @@
 				e.target.textContent = 'Posting...'; 
 				e.target.disabled = true; 
 				e.target.style.opacity = '0.6';
+				isMutating = true;
 				
 				fetch( `${ cfg.restUrl }shanuman-va/v1/annotations`, { 
 					method: 'POST', 
@@ -486,6 +503,9 @@
 					e.target.textContent = 'Save'; 
 					e.target.disabled = false; 
 					e.target.style.opacity = '1'; 
+				})
+				.finally(() => {
+					isMutating = false;
 				});
 			} );
 		}
@@ -649,10 +669,18 @@
 	createBottomRightToolbar();
 	createBottomLeftToolbar();
 
-	window.addEventListener( 'focus', () => loadExistingPins() );
+	// Guard focus and visibility syncing from wiping open windows or racing actions
+	function handleSafeSync() {
+		if ( isMutating ) return;
+		const openForm = activePins.find( p => p.formNode && p.formNode.style.display === 'block' );
+		if ( openForm ) return;
+		loadExistingPins();
+	}
+
+	window.addEventListener( 'focus', handleSafeSync );
 	document.addEventListener( 'visibilitychange', () => {
 		if ( document.visibilityState === 'visible' ) {
-			loadExistingPins();
+			handleSafeSync();
 		}
 	} );
 
