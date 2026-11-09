@@ -715,6 +715,29 @@
 	loadExistingPins();
 	createBottomRightToolbar();
 	createBottomLeftToolbar();
+	
+	// Recalculate pin positions dynamically on window resize
+	let resizeTimeout;
+	window.addEventListener( 'resize', () => {
+		clearTimeout( resizeTimeout );
+		resizeTimeout = setTimeout( () => {
+			activePins.forEach( p => {
+				if ( ! p.element || ! p.domNode || ! p.formNode ) return;
+				
+				const r = p.element.getBoundingClientRect(); 
+				const absX = r.left + window.scrollX + ( r.width * ( parseFloat( p.percentX ) / 100 ) ); 
+				const absY = r.top + window.scrollY + ( r.height * ( parseFloat( p.percentY ) / 100 ) );
+				
+				p.domNode.style.left = `${ Math.round( absX - 12 ) }px`; 
+				p.domNode.style.top = `${ Math.round( absY - 24 ) }px`;
+				
+				if ( p.formNode.style.display === 'block' ) { 
+					updateFormPosition( p.formNode, absX, absY ); 
+					showHighlight( p.element ); 
+				}
+			} );
+		}, 150 );
+	} );
 
 	function handleSafeSync() {
 		if ( isMutating ) return;
