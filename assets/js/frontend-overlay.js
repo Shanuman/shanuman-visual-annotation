@@ -16,7 +16,7 @@
 	let isShowResolved = false;
 	let isOverlayVisible = true; 
 	let isLargeAccessibilityMode = false; 
-	let isDimBackgroundActive = false; 
+	let isDimBackgroundActive = false; // Starts without dimming
 	let dimBackdropNode = null;
 	let isMutating = false; // Prevents focus listeners from racing during confirm/actions
 
@@ -114,7 +114,10 @@
 					hideHighlight();
 					toggleDimBackdrop( false );
 					const dimBtn = document.getElementById( 'shanuman-va-dim-btn' );
-					if ( dimBtn ) { dimBtn.textContent = 'Dim Background'; dimBtn.style.backgroundColor = '#1d2327'; }
+					if ( dimBtn ) { 
+						dimBtn.textContent = 'Dim Background'; 
+						dimBtn.style.backgroundColor = '#1d2327'; 
+					}
 				} );
 				document.body.appendChild( dimBackdropNode );
 			} else {
@@ -616,12 +619,18 @@
 			if ( ! isOverlayVisible ) {
 				hideHighlight();
 				toggleDimBackdrop( false );
-				if ( dimBtnEl ) { dimBtnEl.textContent = 'Dim Background'; dimBtnEl.style.backgroundColor = '#1d2327'; }
+				if ( dimBtnEl ) { 
+					dimBtnEl.textContent = 'Dim Background'; 
+					dimBtnEl.style.backgroundColor = '#1d2327'; 
+				}
 				if ( isAnnotating ) {
 					isAnnotating = false;
 					document.body.classList.remove( 'shanuman-va-is-annotating' );
 					const ab = document.getElementById( 'shanuman-va-toggle-btn' );
-					if ( ab ) { ab.textContent = 'Add Comment'; ab.style.backgroundColor = primaryColor; }
+					if ( ab ) { 
+						ab.textContent = 'Add Comment'; 
+						ab.style.backgroundColor = primaryColor; 
+					}
 				}
 			}
 		} );
@@ -634,7 +643,7 @@
 			e.stopPropagation();
 			const n = ! isDimBackgroundActive;
 			toggleDimBackdrop( n );
-			dimBtn.textContent = n ? 'Undim Background' : 'Dim Background';
+			dimBtn.textContent = n ? 'Remove Dimming' : 'Dim Background';
 			dimBtn.style.backgroundColor = n ? primaryColor : '#1d2327';
 		} );
 
@@ -669,7 +678,6 @@
 	createBottomRightToolbar();
 	createBottomLeftToolbar();
 
-	// Guard focus and visibility syncing from wiping open windows or racing actions
 	function handleSafeSync() {
 		if ( isMutating ) return;
 		const openForm = activePins.find( p => p.formNode && p.formNode.style.display === 'block' );
