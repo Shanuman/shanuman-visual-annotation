@@ -557,27 +557,29 @@
 				}
 			} );
 
-			// Deep-link auto-scroll and popover opener
+			// Auto-open and scroll to specific pin if arriving from the dashboard "View" button
+			const urlParams  = new URLSearchParams( window.location.search );
+			const autoOpenId = urlParams.get( 'shanuman_va_open_pin' ) || urlParams.get( 'wp_va_open_pin' );
+
 			if ( autoOpenId ) {
 				const targetPin = activePins.find( p => parseInt( p.id, 10 ) === parseInt( autoOpenId, 10 ) );
 				if ( targetPin && targetPin.domNode && targetPin.formNode && targetPin.element ) {
-					// 1. Smoothly scroll the element to center screen
+					// 1. Smoothly scroll the target element to center screen
 					targetPin.element.scrollIntoView( { behavior: 'smooth', block: 'center' } );
 
 					// 2. Open popover form once scroll settles
 					setTimeout( () => {
 						document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => f.style.display = 'none' );
 						targetPin.formNode.style.display = 'block';
-						const elRect = targetPin.element.getBoundingClientRect();
-						updateFormPosition( 
-							targetPin.formNode, 
-							elRect.left + window.scrollX + ( elRect.width * ( targetPin.percentX / 100 ) ), 
-							elRect.top + window.scrollY + ( elRect.height * ( targetPin.percentY / 100 ) ) 
-						);
 						showHighlight( targetPin.element );
+
+						const r    = targetPin.element.getBoundingClientRect();
+						const absX = r.left + window.scrollX + ( r.width * ( parseFloat( targetPin.percentX ) / 100 ) );
+						const absY = r.top + window.scrollY + ( r.height * ( parseFloat( targetPin.percentY ) / 100 ) );
+						updateFormPosition( targetPin.formNode, absX, absY );
 					}, 350 );
 
-					// 3. Remove query parameter cleanly from address bar without page reload
+					// 3. Clean up the URL parameter in address bar without reloading
 					try {
 						const cleanUrl = new URL( window.location.href );
 						cleanUrl.searchParams.delete( 'shanuman_va_open_pin' );
