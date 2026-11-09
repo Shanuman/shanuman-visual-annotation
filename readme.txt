@@ -68,4 +68,4 @@ Yes! The annotation overlay and toolbars are fully responsive and work seamlessl
 
 = 1.0.3 =
 * Minor bug fixes.
-* Added font size.
+* Added font-size injection from pro add-on.
