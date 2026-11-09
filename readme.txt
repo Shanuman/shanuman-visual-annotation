@@ -58,3 +58,10 @@ Yes! The annotation overlay and toolbars are fully responsive and work seamlessl
 
 = 1.0.0 =
 * Initial public release.
+
+= 1.0.1 =
+* Minor bug fixes.
+
+= 1.0.2 =
+* Minor bug fixes.
+* Make front-end form element responsive.
