@@ -524,7 +524,12 @@
 		const currentlyOpen = activePins.find( p => p.formNode && p.formNode.style.display === 'block' );
 		const openPinId = currentlyOpen ? currentlyOpen.id : null;
 
-		fetch( `${ cfg.restUrl }shanuman-va/v1/annotations?url=${ currentUrl }&show_resolved=${ isShowResolved }&t=${ cacheBuster }`, { 
+		// Check if we arrived via a "View on Page" deep link from the admin dashboard
+		const urlParams = new URLSearchParams( window.location.search );
+		const autoOpenId = urlParams.get( 'shanuman_va_open_pin' ) || urlParams.get( 'wp_va_open_pin' );
+		const fetchResolved = isShowResolved || Boolean( autoOpenId );
+
+		fetch( `${ cfg.restUrl }shanuman-va/v1/annotations?url=${ currentUrl }&show_resolved=${ fetchResolved }&t=${ cacheBuster }`, { 
 			headers: { 'X-WP-Nonce': cfg.nonce } 
 		} )
 		.then( res => res.json() ).then( data => {
@@ -544,12 +549,43 @@
 				pinData.domNode = renderTemporaryPin( absX, absY, pinData );
 				activePins.push( pinData );
 
+				// Restore open form if refreshed during user session
 				if ( openPinId && savedPin.id === openPinId ) {
 					pinData.formNode.style.display = 'block';
 					updateFormPosition( pinData.formNode, absX, absY );
 					showHighlight( pinData.element );
 				}
 			} );
+
+			// Deep-link auto-scroll and popover opener
+			if ( autoOpenId ) {
+				const targetPin = activePins.find( p => parseInt( p.id, 10 ) === parseInt( autoOpenId, 10 ) );
+				if ( targetPin && targetPin.domNode && targetPin.formNode && targetPin.element ) {
+					// 1. Smoothly scroll the element to center screen
+					targetPin.element.scrollIntoView( { behavior: 'smooth', block: 'center' } );
+
+					// 2. Open popover form once scroll settles
+					setTimeout( () => {
+						document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => f.style.display = 'none' );
+						targetPin.formNode.style.display = 'block';
+						const elRect = targetPin.element.getBoundingClientRect();
+						updateFormPosition( 
+							targetPin.formNode, 
+							elRect.left + window.scrollX + ( elRect.width * ( targetPin.percentX / 100 ) ), 
+							elRect.top + window.scrollY + ( elRect.height * ( targetPin.percentY / 100 ) ) 
+						);
+						showHighlight( targetPin.element );
+					}, 350 );
+
+					// 3. Remove query parameter cleanly from address bar without page reload
+					try {
+						const cleanUrl = new URL( window.location.href );
+						cleanUrl.searchParams.delete( 'shanuman_va_open_pin' );
+						cleanUrl.searchParams.delete( 'wp_va_open_pin' );
+						window.history.replaceState( {}, document.title, cleanUrl.pathname + ( cleanUrl.search ? cleanUrl.search : '' ) + cleanUrl.hash );
+					} catch ( e ) {}
+				}
+			}
 		} );
 	}
 
