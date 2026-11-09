@@ -10,7 +10,7 @@
 			transform-origin: top;
 			opacity: 1;
 			transform: scaleY(1);
-			max-height: 300px;
+			max-height: 3000px;
 			overflow: hidden;
 			margin-bottom: 20px;
 		}
