@@ -15,7 +15,6 @@
 	let highlightBox = null;
 	let isShowResolved = false;
 	let isOverlayVisible = true; 
-	let isLargeAccessibilityMode = false; 
 	let isDimBackgroundActive = false; // Starts without dimming
 	let dimBackdropNode = null;
 	let isMutating = false; // Prevents focus listeners from racing during confirm/actions
@@ -60,10 +59,6 @@
 	const cursorStyle = document.createElement( 'style' );
 	cursorStyle.innerHTML = 'body.shanuman-va-is-annotating * { cursor: crosshair !important; }';
 	document.head.appendChild( cursorStyle );
-
-	function getActiveFormWidth() {
-		return isLargeAccessibilityMode ? ( configuredWidth + 100 ) : configuredWidth;
-	}
 
 	function showHighlight( element ) {
 		if ( ! element ) return;
@@ -157,13 +152,22 @@
 		const viewportWidth = window.innerWidth;
 		const viewportHeight = window.innerHeight;
 		
-		let formWidth = getActiveFormWidth();
+		let formWidth = configuredWidth;
 		if ( viewportWidth < formWidth + 20 ) formWidth = viewportWidth - 20; 
 		form.style.width = `${formWidth}px`; 
 
+		// Temporarily display to measure true expanded height
 		const wasHidden = form.style.display === 'none';
 		if ( wasHidden ) { form.style.visibility = 'hidden'; form.style.display = 'block'; }
-		const formHeight = form.offsetHeight || 250;
+		
+		form.style.maxHeight = 'none'; // Reset to measure naturally
+		let formHeight = form.offsetHeight || 250;
+		
+		// If thread is taller than the whole screen, cap it so it scrolls internally
+		if ( formHeight > viewportHeight - 20 ) {
+			formHeight = viewportHeight - 20;
+		}
+
 		if ( wasHidden ) { form.style.display = 'none'; form.style.visibility = 'visible'; }
 
 		const scrollX = window.scrollX;
@@ -174,11 +178,15 @@
 
 		if ( left + formWidth > scrollX + viewportWidth - 10 ) left = scrollX + viewportWidth - formWidth - 10;
 		if ( left < scrollX + 10 ) left = scrollX + 10;
+		
+		// Shift form UP dynamically if it expands past the bottom of the screen
 		if ( top + formHeight > scrollY + viewportHeight - 10 ) top = scrollY + viewportHeight - formHeight - 10;
 		if ( top < scrollY + 10 ) top = scrollY + 10;
 
 		form.style.left = `${ Math.round( left ) }px`;
 		form.style.top = `${ Math.round( top ) }px`;
+		form.style.maxHeight = `${ formHeight }px`;
+		form.style.overflowY = 'auto';
 	}
 
 	function renderTemporaryPin( x, y, pinData ) {
@@ -213,7 +221,7 @@
 
 		const form = document.createElement( 'div' );
 		form.className = 'shanuman-va-pin-form';
-		form.style.cssText = `position: absolute; background-color: #ffffff; border: 1px solid ${pinBgColor}; box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: ${isLargeAccessibilityMode ? '18px' : '14px'}; border-radius: 6px; z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: ${isLargeAccessibilityMode ? '16px' : '13px'}; display: ${(pinData.status === 'draft' && isOverlayVisible) ? 'block' : 'none'}; box-sizing: border-box;`;
+		form.style.cssText = `position: absolute; background-color: #ffffff; border: 1px solid ${pinBgColor}; box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 14px; border-radius: 6px; z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; display: ${(pinData.status === 'draft' && isOverlayVisible) ? 'block' : 'none'}; box-sizing: border-box;`;
 		document.body.appendChild( form );
 		pinData.formNode = form;
 
@@ -222,31 +230,28 @@
 
 			const renderThreadContent = () => {
 				const isApproved = pinData.status === 'approved';
-				const baseFontSize = isLargeAccessibilityMode ? '15px' : '13px';
-				const smallFontSize = isLargeAccessibilityMode ? '13px' : '11px';
 				const flagColor = pinData.flagged ? attentionColor : '#8c8f94';
 				const flagFill = pinData.flagged ? attentionColor : 'none';
 
 				let threadHtml = `
-					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">
-						<button type="button" class="shanuman-va-accessibility-toggle" style="background: #f0f0f1; border: 1px solid #8c8f94; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; font-weight: bold;">${ isLargeAccessibilityMode ? 'Standard Size' : 'A+ Larger View' }</button>
+					<div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">
 						<span style="font-size: 11px; color: #646970;">Pin #${ pinData.id }</span>
 					</div>
 					<div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 8px;">
 						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-							<div style="font-size: ${ smallFontSize }; color: #646970; display: flex; align-items: center;">
+							<div style="font-size: 11px; color: #646970; display: flex; align-items: center;">
 								<strong>${ pinData.author_name || 'Author' }</strong> &bull; ${ pinData.date || '' }
 								<svg class="shanuman-va-btn-flag" viewBox="0 0 24 24" width="14" height="14" stroke="${flagColor}" stroke-width="2" fill="${flagFill}" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; margin-left: 8px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
 							</div>
 							<div style="display: flex; gap: 8px;">
-								${ !isApproved ? `<button type="button" class="shanuman-va-btn-approve" style="background: none; border: none; color: ${ accentColor }; cursor: pointer; font-size:${ smallFontSize }; padding: 0; font-weight: bold;">Approve</button>` : `<button type="button" class="shanuman-va-btn-reopen" style="background: none; border: none; color: ${ reopenColor }; cursor: pointer; font-size:${ smallFontSize }; padding: 0; font-weight: bold;">Reopen</button>` }
+								${ !isApproved ? `<button type="button" class="shanuman-va-btn-approve" style="background: none; border: none; color: ${ accentColor }; cursor: pointer; font-size: 11px; padding: 0; font-weight: bold;">Approve</button>` : `<button type="button" class="shanuman-va-btn-reopen" style="background: none; border: none; color: ${ reopenColor }; cursor: pointer; font-size: 11px; padding: 0; font-weight: bold;">Reopen</button>` }
 							</div>
 						</div>
-						<div style="font-size: ${ baseFontSize }; color: #1d2327; margin-top: 4px; line-height: 1.4;">${ pinData.comment }</div>
+						<div style="font-size: 13px; color: #1d2327; margin-top: 4px; line-height: 1.4;">${ pinData.comment }</div>
 					</div>`;
 
 				if ( pinData.replies && pinData.replies.length > 0 ) {
-					threadHtml += `<div class="shanuman-va-replies-list" style="margin-left: 8px; border-left: 2px solid ${pinBgColor}; padding-left: 8px; margin-bottom: 10px; max-height: ${ isLargeAccessibilityMode ? '220px' : '150px' }; overflow-y: auto;">`;
+					threadHtml += `<div class="shanuman-va-replies-list" style="margin-left: 8px; border-left: 2px solid ${pinBgColor}; padding-left: 8px; margin-bottom: 10px;">`;
 					pinData.replies.forEach( r => {
 						const isReplyAuthor = parseInt( r.user_id, 10 ) === currentUserId;
 						const canDeleteReply = isReplyAuthor || cfg.isAdmin;
@@ -254,19 +259,19 @@
 						const showBadge = isUnread || r.is_edited;
 						const badgeColor = isUnread ? attentionColor : '#a7aaad';
 						
-						threadHtml += `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-size: ${ smallFontSize }; color: #646970; display: flex; align-items: center;"><strong>${ r.author_name }</strong>&nbsp;&bull;&nbsp;${ r.date }&nbsp;&bull;&nbsp;${ showBadge ? `<span class="shanuman-va-edited-badge" data-pin-id="${ pinData.id }" data-reply-id="${ r.id }" data-unread="${ isUnread }" title="${ r.is_edited ? 'Original: '+r.original_content : 'Unread' }" style="color: ${ badgeColor }; font-weight: ${ isUnread ? 'bold' : 'normal' }; cursor: help; display: inline-flex; align-items: center; gap: 4px;">${ isUnread && !r.is_edited ? 'New' : 'Edited' } <span class="shanuman-va-info-circle" style="display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; background-color: ${ badgeColor }; color: #fff; border-radius: 50%; font-size: 10px; font-weight: bold;">${ isUnread && !r.is_edited ? '!' : 'i' }</span></span>` : '' }</div><div style="display: flex; gap: 8px;">${ isReplyAuthor && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-edit-reply" data-id="${ r.id }" style="background: none; border: none; color: ${ primaryColor }; cursor: pointer; font-size:${ smallFontSize }; padding: 0;">Edit</button>` : '' }${ canDeleteReply && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-delete-reply" data-id="${ r.id }" style="background: none; border: none; color: #d63638; cursor: pointer; font-size: ${ smallFontSize }; padding: 0;">Delete</button>` : '' }</div></div>`;
+						threadHtml += `<div style="margin-bottom: 8px;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="font-size: 11px; color: #646970; display: flex; align-items: center;"><strong>${ r.author_name }</strong>&nbsp;&bull;&nbsp;${ r.date }&nbsp;&bull;&nbsp;${ showBadge ? `<span class="shanuman-va-edited-badge" data-pin-id="${ pinData.id }" data-reply-id="${ r.id }" data-unread="${ isUnread }" title="${ r.is_edited ? 'Original: '+r.original_content : 'Unread' }" style="color: ${ badgeColor }; font-weight: ${ isUnread ? 'bold' : 'normal' }; cursor: help; display: inline-flex; align-items: center; gap: 4px;">${ isUnread && !r.is_edited ? 'New' : 'Edited' } <span class="shanuman-va-info-circle" style="display: inline-flex; justify-content: center; align-items: center; width: 14px; height: 14px; background-color: ${ badgeColor }; color: #fff; border-radius: 50%; font-size: 10px; font-weight: bold;">${ isUnread && !r.is_edited ? '!' : 'i' }</span></span>` : '' }</div><div style="display: flex; gap: 8px;">${ isReplyAuthor && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-edit-reply" data-id="${ r.id }" style="background: none; border: none; color: ${ primaryColor }; cursor: pointer; font-size: 11px; padding: 0;">Edit</button>` : '' }${ canDeleteReply && editingReplyId !== r.id ? `<button type="button" class="shanuman-va-btn-delete-reply" data-id="${ r.id }" style="background: none; border: none; color: #d63638; cursor: pointer; font-size: 11px; padding: 0;">Delete</button>` : '' }</div></div>`;
 
 						if ( editingReplyId === r.id ) {
-							threadHtml += `<div style="margin-top: 4px;"><textarea class="shanuman-va-edit-reply-input" data-id="${ r.id }" rows="3" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid ${ primaryColor }; border-radius: 4px;">${ r.content }</textarea><div style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px;"><button type="button" class="shanuman-va-btn-cancel-reply-edit" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Cancel</button><button type="button" class="shanuman-va-btn-save-reply-edit" data-id="${ r.id }" style="background: ${ primaryColor }; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Save</button></div></div>`;
+							threadHtml += `<div style="margin-top: 4px;"><textarea class="shanuman-va-edit-reply-input" data-id="${ r.id }" rows="3" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px; border: 1px solid ${ primaryColor }; border-radius: 4px;">${ r.content }</textarea><div style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px;"><button type="button" class="shanuman-va-btn-cancel-reply-edit" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: 4px 8px; border-radius: 3px; font-size: 11px; cursor: pointer;">Cancel</button><button type="button" class="shanuman-va-btn-save-reply-edit" data-id="${ r.id }" style="background: ${ primaryColor }; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; font-size: 11px; cursor: pointer;">Save</button></div></div>`;
 						} else {
-							threadHtml += `<div style="font-size: ${ baseFontSize }; color: #2c3338; margin-top: 2px; line-height: 1.4; font-weight: ${ isUnread ? 'bold' : 'normal' };">${ r.content }</div>`;
+							threadHtml += `<div style="font-size: 13px; color: #2c3338; margin-top: 2px; line-height: 1.4; font-weight: ${ isUnread ? 'bold' : 'normal' };">${ r.content }</div>`;
 						}
 						threadHtml += `</div>`;
 					});
 					threadHtml += '</div>';
 				}
 
-				threadHtml += `<div style="margin-top: 8px;"><textarea class="shanuman-va-reply-input" placeholder="Write a reply or status update..." rows="${ isLargeAccessibilityMode ? '4' : '2' }" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid #8c8f94; border-radius: 4px;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;"><button type="button" class="shanuman-va-submit-reply" style="background: ${ primaryColor }; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${ baseFontSize }; cursor: pointer; transition: opacity 0.2s ease;">Reply</button></div></div>`;
+				threadHtml += `<div style="margin-top: 8px;"><textarea class="shanuman-va-reply-input" placeholder="Write a reply or status update..." rows="2" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px; border: 1px solid #8c8f94; border-radius: 4px;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;"><button type="button" class="shanuman-va-submit-reply" style="background: ${ primaryColor }; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; font-size: 13px; cursor: pointer; transition: opacity 0.2s ease;">Reply</button></div></div>`;
 				form.innerHTML = threadHtml;
 
 				form.querySelector( '.shanuman-va-btn-flag' ).addEventListener( 'click', (e) => {
@@ -275,14 +280,6 @@
 					renderThreadContent();
 					fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ pinData.id }/flag`, { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } ).catch(()=>{});
 				});
-
-				const accessToggle = form.querySelector( '.shanuman-va-accessibility-toggle' );
-				if ( accessToggle ) accessToggle.addEventListener( 'click', (e) => { 
-					e.stopPropagation();
-					isLargeAccessibilityMode = ! isLargeAccessibilityMode; 
-					updateFormPosition( form, parseInt( pin.style.left ) + 12, parseInt( pin.style.top ) + 24 );
-					renderThreadContent();
-				} );
 
 				const approveBtn = form.querySelector( '.shanuman-va-btn-approve' );
 				if ( approveBtn ) approveBtn.addEventListener( 'click', (e) => { 
@@ -338,6 +335,10 @@
 							pinData.replies = Array.isArray( data.replies ) ? data.replies : Object.values( data.replies ); 
 							editingReplyId = null; 
 							renderThreadContent(); 
+							
+							// Shift boundary check dynamically after saving an edit
+							const elRect = pinData.element.getBoundingClientRect();
+							updateFormPosition( form, elRect.left + window.scrollX + ( elRect.width * ( pinData.percentX / 100 ) ), elRect.top + window.scrollY + ( elRect.height * ( pinData.percentY / 100 ) ) );
 						} 
 					} )
 					.catch(()=>{ btn.textContent = 'Save'; btn.disabled = false; btn.style.opacity = '1'; })
@@ -404,6 +405,10 @@
 							submitBtn.disabled = false;
 							submitBtn.style.opacity = '1';
 							renderThreadContent(); 
+							
+							// Shift boundary check dynamically after posting a new reply
+							const elRect = pinData.element.getBoundingClientRect();
+							updateFormPosition( form, elRect.left + window.scrollX + ( elRect.width * ( pinData.percentX / 100 ) ), elRect.top + window.scrollY + ( elRect.height * ( pinData.percentY / 100 ) ) );
 						} 
 					} )
 					.catch(()=>{ submitBtn.textContent = 'Reply'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; })
@@ -452,25 +457,17 @@
 				}
 			} );
 		} else {
-			const bFS = isLargeAccessibilityMode ? '15px' : '13px'; 
-			const sFS = isLargeAccessibilityMode ? '13px' : '11px'; 
-			const pS = isLargeAccessibilityMode ? '10px' : '6px';
+			form.innerHTML = `
+				<div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">
+					<span style="font-size: 11px; font-weight: bold;">New Feedback</span>
+				</div>
+				<textarea class="shanuman-va-new-comment" placeholder="Add your comment..." rows="3" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 6px; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea>
+				<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;">
+					<button type="button" class="shanuman-va-btn-cancel" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: 4px 10px; border-radius: 3px; font-size: 13px; cursor: pointer;">Cancel</button>
+					<button type="button" class="shanuman-va-btn-save" style="background: ${primaryColor}; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; font-size: 13px; cursor: pointer; transition: opacity 0.2s ease;">Save</button>
+				</div>
+			`;
 			
-			form.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px;"><button type="button" class="shanuman-va-accessibility-toggle" style="background: #f0f0f1; border: 1px solid #8c8f94; border-radius: 4px; padding: 2px 8px; font-size: ${sFS}; cursor: pointer; font-weight: bold;">${ isLargeAccessibilityMode ? 'Standard Size' : 'A+ Larger View' }</button><span style="font-size: ${sFS}; font-weight: bold;">New Feedback</span></div><textarea class="shanuman-va-new-comment" placeholder="Add your comment..." rows="${ isLargeAccessibilityMode ? '5' : '3' }" style="width: 100%; box-sizing: border-box; font-size: ${bFS}; padding: ${pS}; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea><div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;"><button type="button" class="shanuman-va-btn-cancel" style="background: #f0f0f1; border: 1px solid #8c8f94; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer;">Cancel</button><button type="button" class="shanuman-va-btn-save" style="background: ${primaryColor}; color: #fff; border: none; padding: ${ isLargeAccessibilityMode ? '6px 14px' : '4px 10px' }; border-radius: 3px; font-size: ${bFS}; cursor: pointer; transition: opacity 0.2s ease;">Save</button></div>`;
-			
-			const accTgl = form.querySelector( '.shanuman-va-accessibility-toggle' );
-			if ( accTgl ) accTgl.addEventListener( 'click', (e) => { 
-				e.stopPropagation();
-				isLargeAccessibilityMode = ! isLargeAccessibilityMode; 
-				const txt = form.querySelector( '.shanuman-va-new-comment' ).value; 
-				pin.remove(); 
-				form.remove(); 
-				pinData.domNode = renderTemporaryPin( parseInt( pin.style.left ) + 12, parseInt( pin.style.top ) + 24, pinData ); 
-				pinData.formNode.querySelector( '.shanuman-va-new-comment' ).value = txt; 
-				pinData.formNode.style.display = 'block'; 
-				updateFormPosition( pinData.formNode, parseInt( pin.style.left ) + 12, parseInt( pin.style.top ) + 24 ); 
-			} );
-
 			form.querySelector( '.shanuman-va-btn-cancel' ).addEventListener( 'click', (e) => { 
 				e.stopPropagation(); 
 				pin.remove(); 
@@ -557,29 +554,28 @@
 				}
 			} );
 
-			// Auto-open and scroll to specific pin if arriving from the dashboard "View" button
-			const urlParams  = new URLSearchParams( window.location.search );
-			const autoOpenId = urlParams.get( 'shanuman_va_open_pin' ) || urlParams.get( 'wp_va_open_pin' );
-
+			// Deep-link auto-scroll and popover opener
 			if ( autoOpenId ) {
 				const targetPin = activePins.find( p => parseInt( p.id, 10 ) === parseInt( autoOpenId, 10 ) );
 				if ( targetPin && targetPin.domNode && targetPin.formNode && targetPin.element ) {
-					// 1. Smoothly scroll the target element to center screen
+					// 1. Smoothly scroll the element to center screen
 					targetPin.element.scrollIntoView( { behavior: 'smooth', block: 'center' } );
 
 					// 2. Open popover form once scroll settles
 					setTimeout( () => {
 						document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => f.style.display = 'none' );
 						targetPin.formNode.style.display = 'block';
+						
+						const elRect = targetPin.element.getBoundingClientRect();
+						updateFormPosition( 
+							targetPin.formNode, 
+							elRect.left + window.scrollX + ( elRect.width * ( targetPin.percentX / 100 ) ), 
+							elRect.top + window.scrollY + ( elRect.height * ( targetPin.percentY / 100 ) ) 
+						);
 						showHighlight( targetPin.element );
-
-						const r    = targetPin.element.getBoundingClientRect();
-						const absX = r.left + window.scrollX + ( r.width * ( parseFloat( targetPin.percentX ) / 100 ) );
-						const absY = r.top + window.scrollY + ( r.height * ( parseFloat( targetPin.percentY ) / 100 ) );
-						updateFormPosition( targetPin.formNode, absX, absY );
 					}, 350 );
 
-					// 3. Clean up the URL parameter in address bar without reloading
+					// 3. Remove query parameter cleanly from address bar without page reload
 					try {
 						const cleanUrl = new URL( window.location.href );
 						cleanUrl.searchParams.delete( 'shanuman_va_open_pin' );
@@ -715,7 +711,7 @@
 	loadExistingPins();
 	createBottomRightToolbar();
 	createBottomLeftToolbar();
-	
+
 	// Recalculate pin positions dynamically on window resize
 	let resizeTimeout;
 	window.addEventListener( 'resize', () => {
