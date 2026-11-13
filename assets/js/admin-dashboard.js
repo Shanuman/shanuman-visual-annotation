@@ -236,17 +236,16 @@
 							const isApproved = pin.status === 'approved';
 							const isReopened = pin.status === 'reopened';
 							const isAuthor = currentUserId > 0 && currentUserId === parseInt( pin.author_id, 10 );
-							const canDeletePin = shanumanVaConfig.isAdmin || isAuthor;
+							const canDelete = shanumanVaConfig.isAdmin || isAuthor;
 
 							// Detect if the pin itself is unread for the badge
 							const pinSeenBy = Array.isArray( pin.seen_by ) ? pin.seen_by : [];
 							const isPinUnread = !isAuthor && !pinSeenBy.includes( currentUserId ) && pin.status === 'saved';
 
-							let borderColor = primaryColor;
+							let borderColor = shanumanVaConfig.buttonColor;
 							if ( isApproved ) borderColor = shanumanVaConfig.accentColor;
 							else if ( isReopened ) borderColor = shanumanVaConfig.reopenColor;
 							else if ( isPinUnread ) borderColor = alertColor; // Turn card border red if unread
-							else borderColor = shanumanVaConfig.buttonColor;
 
 							const isPosting = submittingReply[pin.id] || false;
 							const isFading = fadingOutId === pin.id;
@@ -324,4 +323,4 @@
 	const rootNode = document.getElementById( 'shanuman-va-admin-app' );
 	if ( rootNode ) wp.element.render( wp.element.createElement( AdminDashboard ), rootNode );
 
-} )( window.wp );
+} )( wp );
