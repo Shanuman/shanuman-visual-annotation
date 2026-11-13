@@ -522,10 +522,37 @@
 			activePins.length = 0; 
 			hideHighlight();
 
+			// --- PRO FEATURE: Initialize Orphan Drawer ---
+			const orphanList = document.getElementById( 'shanuman-va-orphan-list' );
+			if ( orphanList ) orphanList.innerHTML = '';
+			let orphanCount = 0;
+
 			data.forEach( savedPin => {
 				let el = null; 
 				try { el = document.evaluate( savedPin.xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null ).singleNodeValue; } catch ( e ) {}
-				if ( ! el ) return;
+				
+				// --- PRO FEATURE: Flag as orphaned if element is missing ---
+				if ( ! el ) {
+					if ( cfg.orphanRecovery && savedPin.status !== 'approved' ) {
+						if ( ! savedPin.orphaned ) {
+							fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ savedPin.id }/orphan`, { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } ).catch(()=>{});
+						}
+						orphanCount++;
+						if ( orphanList ) {
+							const oItem = document.createElement('div');
+							oItem.style.cssText = `padding: 10px; background: #f8f9fa; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; font-size: ${smallFontSize}; line-height: 1.4;`;
+							oItem.innerHTML = `<strong style="color:#1d2327;">Pin #${savedPin.id}</strong><br/><span style="color:#646970;">Element missing from page.</span><div style="margin-top:6px; color:#2c3338;">${savedPin.comment}</div>`;
+							orphanList.appendChild(oItem);
+						}
+					}
+					return;
+				}
+
+				// --- PRO FEATURE: Self-heal if element returns to the DOM ---
+				if ( cfg.orphanRecovery && savedPin.orphaned ) {
+					fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ savedPin.id }/heal`, { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } ).catch(()=>{});
+				}
+
 				const r = el.getBoundingClientRect();
 				const absX = r.left + window.scrollX + ( r.width * ( parseFloat( savedPin.percentX ) / 100 ) );
 				const absY = r.top + window.scrollY + ( r.height * ( parseFloat( savedPin.percentY ) / 100 ) );
@@ -539,6 +566,22 @@
 					showHighlight( pinData.element );
 				}
 			} );
+
+			// --- PRO FEATURE: Toggle drawer visibility ---
+			if ( cfg.orphanRecovery ) {
+				const toggleBtn = document.getElementById( 'shanuman-va-orphan-toggle' );
+				const countBadge = document.getElementById( 'shanuman-va-orphan-count' );
+				if ( toggleBtn && countBadge ) {
+					if ( orphanCount > 0 ) {
+						toggleBtn.style.display = 'block';
+						countBadge.textContent = orphanCount;
+					} else {
+						toggleBtn.style.display = 'none';
+						document.getElementById( 'shanuman-va-orphan-drawer' ).style.right = '-320px';
+						toggleBtn.style.right = '0';
+					}
+				}
+			}
 
 			if ( autoOpenId ) {
 				const targetPin = activePins.find( p => parseInt( p.id, 10 ) === parseInt( autoOpenId, 10 ) );
@@ -650,6 +693,38 @@
 				}
 			}
 		} );
+		
+		function createOrphanDrawer() {
+			if ( ! cfg.orphanRecovery || document.getElementById( 'shanuman-va-orphan-drawer' ) ) return;
+
+			const drawer = document.createElement( 'div' );
+			drawer.id = 'shanuman-va-orphan-drawer';
+			drawer.style.cssText = `position: fixed; right: -320px; top: 100px; width: 280px; max-height: 70vh; overflow-y: auto; background: #fff; border-left: 4px solid ${attentionColor}; box-shadow: -2px 0 10px rgba(0,0,0,0.1); transition: right 0.3s ease; z-index: 999995; padding: 15px; border-radius: 8px 0 0 8px; box-sizing: border-box;`;
+			
+			const header = document.createElement( 'div' );
+			header.style.cssText = `display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 10px;`;
+			header.innerHTML = `<strong style="font-size: ${baseFontSize}; color: ${attentionColor};">Lost & Found</strong><span id="shanuman-va-orphan-count" style="background: ${attentionColor}; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold;">0</span>`;
+			
+			const list = document.createElement( 'div' );
+			list.id = 'shanuman-va-orphan-list';
+			
+			const toggleBtn = document.createElement( 'button' );
+			toggleBtn.id = 'shanuman-va-orphan-toggle';
+			toggleBtn.innerHTML = '⚠️ Lost Pins';
+			toggleBtn.style.cssText = `position: fixed; right: 0; top: 115px; background: ${attentionColor}; color: #fff; border: none; padding: 8px 12px; border-radius: 8px 0 0 8px; cursor: pointer; z-index: 999996; font-weight: bold; box-shadow: -2px 0 5px rgba(0,0,0,0.2); transition: right 0.3s ease; display: none; font-size: ${smallFontSize};`;
+			
+			let isOpen = false;
+			toggleBtn.addEventListener( 'click', () => {
+				isOpen = !isOpen;
+				drawer.style.right = isOpen ? '0' : '-320px';
+				toggleBtn.style.right = isOpen ? '280px' : '0';
+			});
+
+			drawer.appendChild( header );
+			drawer.appendChild( list );
+			document.body.appendChild( drawer );
+			document.body.appendChild( toggleBtn );
+		}
 
 		const dimBtn = document.createElement( 'button' );
 		dimBtn.id = 'shanuman-va-dim-btn';
@@ -693,6 +768,7 @@
 	loadExistingPins();
 	createBottomRightToolbar();
 	createBottomLeftToolbar();
+	createOrphanDrawer();
 
 	let resizeTimeout;
 	window.addEventListener( 'resize', () => {
