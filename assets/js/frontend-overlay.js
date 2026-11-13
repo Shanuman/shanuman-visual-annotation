@@ -693,38 +693,6 @@
 				}
 			}
 		} );
-		
-		function createOrphanDrawer() {
-			if ( ! cfg.orphanRecovery || document.getElementById( 'shanuman-va-orphan-drawer' ) ) return;
-
-			const drawer = document.createElement( 'div' );
-			drawer.id = 'shanuman-va-orphan-drawer';
-			drawer.style.cssText = `position: fixed; right: -320px; top: 100px; width: 280px; max-height: 70vh; overflow-y: auto; background: #fff; border-left: 4px solid ${attentionColor}; box-shadow: -2px 0 10px rgba(0,0,0,0.1); transition: right 0.3s ease; z-index: 999995; padding: 15px; border-radius: 8px 0 0 8px; box-sizing: border-box;`;
-			
-			const header = document.createElement( 'div' );
-			header.style.cssText = `display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 10px;`;
-			header.innerHTML = `<strong style="font-size: ${baseFontSize}; color: ${attentionColor};">Lost & Found</strong><span id="shanuman-va-orphan-count" style="background: ${attentionColor}; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold;">0</span>`;
-			
-			const list = document.createElement( 'div' );
-			list.id = 'shanuman-va-orphan-list';
-			
-			const toggleBtn = document.createElement( 'button' );
-			toggleBtn.id = 'shanuman-va-orphan-toggle';
-			toggleBtn.innerHTML = '⚠️ Lost Pins';
-			toggleBtn.style.cssText = `position: fixed; right: 0; top: 115px; background: ${attentionColor}; color: #fff; border: none; padding: 8px 12px; border-radius: 8px 0 0 8px; cursor: pointer; z-index: 999996; font-weight: bold; box-shadow: -2px 0 5px rgba(0,0,0,0.2); transition: right 0.3s ease; display: none; font-size: ${smallFontSize};`;
-			
-			let isOpen = false;
-			toggleBtn.addEventListener( 'click', () => {
-				isOpen = !isOpen;
-				drawer.style.right = isOpen ? '0' : '-320px';
-				toggleBtn.style.right = isOpen ? '280px' : '0';
-			});
-
-			drawer.appendChild( header );
-			drawer.appendChild( list );
-			document.body.appendChild( drawer );
-			document.body.appendChild( toggleBtn );
-		}
 
 		const dimBtn = document.createElement( 'button' );
 		dimBtn.id = 'shanuman-va-dim-btn';
@@ -741,6 +709,38 @@
 		tb.appendChild( mastBtn );
 		tb.appendChild( dimBtn );
 		document.body.appendChild( tb );
+	}
+
+	function createOrphanDrawer() {
+		if ( ! cfg.orphanRecovery || document.getElementById( 'shanuman-va-orphan-drawer' ) ) return;
+
+		const drawer = document.createElement( 'div' );
+		drawer.id = 'shanuman-va-orphan-drawer';
+		drawer.style.cssText = `position: fixed; right: -320px; top: 100px; width: 280px; max-height: 70vh; overflow-y: auto; background: #fff; border-left: 4px solid ${attentionColor}; box-shadow: -2px 0 10px rgba(0,0,0,0.1); transition: right 0.3s ease; z-index: 999995; padding: 15px; border-radius: 8px 0 0 8px; box-sizing: border-box;`;
+		
+		const header = document.createElement( 'div' );
+		header.style.cssText = `display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 10px;`;
+		header.innerHTML = `<strong style="font-size: ${baseFontSize}; color: ${attentionColor};">Lost & Found</strong><span id="shanuman-va-orphan-count" style="background: ${attentionColor}; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold;">0</span>`;
+		
+		const list = document.createElement( 'div' );
+		list.id = 'shanuman-va-orphan-list';
+		
+		const toggleBtn = document.createElement( 'button' );
+		toggleBtn.id = 'shanuman-va-orphan-toggle';
+		toggleBtn.innerHTML = '⚠️ Lost Pins';
+		toggleBtn.style.cssText = `position: fixed; right: 0; top: 115px; background: ${attentionColor}; color: #fff; border: none; padding: 8px 12px; border-radius: 8px 0 0 8px; cursor: pointer; z-index: 999996; font-weight: bold; box-shadow: -2px 0 5px rgba(0,0,0,0.2); transition: right 0.3s ease; display: none; font-size: ${smallFontSize};`;
+		
+		let isOpen = false;
+		toggleBtn.addEventListener( 'click', () => {
+			isOpen = !isOpen;
+			drawer.style.right = isOpen ? '0' : '-320px';
+			toggleBtn.style.right = isOpen ? '280px' : '0';
+		});
+
+		drawer.appendChild( header );
+		drawer.appendChild( list );
+		document.body.appendChild( drawer );
+		document.body.appendChild( toggleBtn );
 	}
 
 	document.addEventListener( 'click', ( e ) => {
@@ -820,7 +820,9 @@
 				el.id && (
 					el.id === 'shanuman-va-dim-btn' ||
 					el.id === 'shanuman-va-bottom-right-toolbar' ||
-					el.id === 'shanuman-va-bottom-left-toolbar'
+					el.id === 'shanuman-va-bottom-left-toolbar' ||
+					el.id === 'shanuman-va-orphan-drawer' ||
+					el.id === 'shanuman-va-orphan-toggle'
 				)
 			);
 		} );

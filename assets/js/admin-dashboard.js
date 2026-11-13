@@ -212,13 +212,17 @@
 							
 							return wp.element.createElement( 'div', { key: pin.id, className: `shanuman-va-thread-item ${ isFading ? 'fade-out' : '' }`, style: { padding: '15px', borderLeft: `4px solid ${ threadBorderColor }`, background: '#f6f7f7', borderRadius: '0 4px 4px 0' } },
 								wp.element.createElement( 'div', { className: 'shanuman-va-pin-header', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' } },
-									wp.element.createElement( 'div', { style: { fontSize: '13px', color: '#646970', display: 'flex', alignItems: 'center' } }, 
+									wp.element.createElement( 'div', { style: { fontSize: '13px', color: '#646970', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' } }, 
 										wp.element.createElement( 'strong', { style: { color: '#1d2327' } }, `Pin #${ pin.id }` ),
-										` \u2022 ${ pin.author_name } \u2022 ${ pin.date }`,
+										wp.element.createElement( 'span', null, '\u2022' ),
+										wp.element.createElement( 'span', null, pin.author_name || 'Reviewer' ),
+										wp.element.createElement( 'span', null, '\u2022' ),
+										wp.element.createElement( 'span', null, pin.date ),
+										pin.orphaned && wp.element.createElement( 'span', { style: { background: '#8c8f94', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' } }, 'Element Deleted' ),
 										wp.element.createElement( FlagIcon, { isFlagged: pin.flagged, onClick: () => handleToggleFlag( pin.id ) } )
 									),
 									wp.element.createElement( 'div', { className: 'shanuman-va-pin-actions', style: { display: 'flex', gap: '10px' } },
-										( ! isApproved ) && wp.element.createElement( 'a', { href: ( pin.url || '/' ) + ( ( pin.url || '/' ).includes( '?' ) ? '&' : '?' ) + 'shanuman_va_open_pin=' + pin.id, target: '_blank', className: 'button button-link', style: { color: shanumanVaConfig.buttonColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' } }, 'View' ),
+										( ! isApproved && ! pin.orphaned ) && wp.element.createElement( 'a', { href: ( pin.url || '/' ) + ( ( pin.url || '/' ).includes( '?' ) ? '&' : '?' ) + 'shanuman_va_open_pin=' + pin.id, target: '_blank', className: 'button button-link', style: { color: shanumanVaConfig.buttonColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' } }, 'View' ),
 										! isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.accentColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'approve' ) }, 'Approve' ),
 										isApproved && wp.element.createElement( 'button', { className: 'button button-link', style: { color: shanumanVaConfig.reopenColor, textDecoration: 'none', padding: 0, fontWeight: 'bold' }, onClick: () => handleAction( pin.id, 'reopen' ) }, 'Reopen' ),
 										canDelete && wp.element.createElement( 'button', { className: 'button button-link', style: { color: '#d63638', textDecoration: 'none', padding: 0 }, onClick: () => handleAction( pin.id, 'DELETE' ) }, 'Delete' )
