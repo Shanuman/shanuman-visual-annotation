@@ -191,7 +191,7 @@
 
 		return wp.element.createElement( 'div', { className: 'shanuman-va-dashboard', style: { maxWidth: '900px', marginTop: '20px' } }, 
 			wp.element.createElement( 'div', { className: 'shanuman-va-stats-container', style: { display: 'flex', gap: '25px', background: '#fff', padding: '20px', border: '1px solid #ccd0d4', borderRadius: '4px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' } },
-				wp.element.createElement( 'div', null, wp.element.createElement( 'strong', { style: { color: totalUnread > 0 ? alertColor : '#1d2327', fontSize: '20px', display: 'block' } }, totalUnread ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Unread Replies' ) ),
+				wp.element.createElement( 'div', null, wp.element.createElement( 'strong', { style: { color: totalUnread > 0 ? alertColor : '#1d2327', fontSize: '20px', display: 'block' } }, totalUnread ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Unread Items' ) ),
 				wp.element.createElement( 'div', { style: { borderLeft: '1px solid #ccd0d4', paddingLeft: '25px' } }, wp.element.createElement( 'strong', { style: { fontSize: '20px', display: 'block', color: '#1d2327' } }, totalPending ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Pending Pins' ) ),
 				wp.element.createElement( 'div', { style: { borderLeft: '1px solid #ccd0d4', paddingLeft: '25px' } }, wp.element.createElement( 'strong', { style: { fontSize: '20px', display: 'block', color: '#1d2327' } }, totalResolved ), wp.element.createElement( 'span', { style: { fontSize: '13px', color: '#646970' } }, 'Approved' ) )
 			),
