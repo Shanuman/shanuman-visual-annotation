@@ -148,6 +148,15 @@
 			.then( res => res.json() ).then( data => { if ( data.replies ) { loadPins(); } } );
 		};
 
+		// Handles marking the parent pin itself as seen
+		const handlePinBadgeHover = ( pinId, isUnread ) => {
+			if ( ! isUnread ) return;
+			const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
+			setPins( prev => prev.map( p => p.id === pinId ? { ...p, seen_by: [ ...( p.seen_by || [] ), currentUserId ] } : p ) );
+			fetch( `${ shanumanVaConfig.restUrl }shanuman-va/v1/annotations/${ pinId }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': shanumanVaConfig.nonce } } ).catch( () => {} );
+		};
+
+		// Handles marking a reply as seen
 		const handleBadgeHover = ( pinId, replyId, isUnread ) => {
 			if ( ! isUnread ) return;
 			const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
@@ -159,10 +168,21 @@
 		const totalResolved = pins.filter( p => p.status === 'approved' ).length;
 		
 		let totalUnread = 0;
-		pins.forEach( p => { ( p.replies || [] ).forEach( r => {
+		pins.forEach( p => { 
 			const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
-			if ( parseInt( r.user_id, 10 ) !== currentUserId && !( r.seen_by || [] ).includes( currentUserId ) ) totalUnread++;
-		} ); } );
+			const isPinAuthor = currentUserId === parseInt( p.author_id, 10 );
+			const pinSeenBy = Array.isArray( p.seen_by ) ? p.seen_by : [];
+			
+			// Count the parent pin if it's unread
+			if ( !isPinAuthor && !pinSeenBy.includes( currentUserId ) && p.status === 'saved' ) {
+				totalUnread++;
+			}
+
+			// Count unread replies
+			( p.replies || [] ).forEach( r => {
+				if ( parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) ) totalUnread++;
+			} ); 
+		} );
 
 		const filteredPins = pins.filter( pin => activeTab === 'pending' ? pin.status !== 'approved' : pin.status === 'approved' );
 		const grouped = filteredPins.reduce( ( acc, pin ) => { const url = pin.url || 'Global / Unknown'; if ( ! acc[url] ) acc[url] = []; acc[url].push( pin ); return acc; }, {} );
@@ -186,7 +206,15 @@
 			Object.keys( grouped ).map( url => {
 				const urlPins = grouped[url];
 				const isExpanded = expandedUrls[url];
-				const groupHasUnread = urlPins.some( p => ( p.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== parseInt( shanumanVaConfig.currentUserId, 10 ) && !( r.seen_by || [] ).includes( parseInt( shanumanVaConfig.currentUserId, 10 ) ) ) );
+				
+				// Group indicator includes unread status of both replies and new parent pins
+				const groupHasUnread = urlPins.some( p => {
+					const uid = parseInt( shanumanVaConfig.currentUserId, 10 );
+					const isParentUnread = ( uid !== parseInt( p.author_id, 10 ) ) && !( Array.isArray( p.seen_by ) ? p.seen_by : [] ).includes( uid ) && p.status === 'saved';
+					const hasUnreadReply = ( p.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== uid && !( r.seen_by || [] ).includes( uid ) );
+					return isParentUnread || hasUnreadReply;
+				});
+
 				const groupHasFlag = urlPins.some( p => p.flagged );
 				const groupTitle = formatGroupTitle( url, urlPins[0]?.page_title ); 
 
@@ -204,13 +232,26 @@
 					),
 					isExpanded && wp.element.createElement( 'div', { style: { padding: '15px', display: 'flex', flexDirection: 'column', gap: '20px' } },
 						urlPins.map( pin => {
-							const canDelete = shanumanVaConfig.isAdmin || parseInt( pin.author_id, 10 ) === parseInt( shanumanVaConfig.currentUserId, 10 );
+							const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 							const isApproved = pin.status === 'approved';
-							const threadBorderColor = isApproved ? shanumanVaConfig.accentColor : shanumanVaConfig.buttonColor;
+							const isReopened = pin.status === 'reopened';
+							const isAuthor = currentUserId > 0 && currentUserId === parseInt( pin.author_id, 10 );
+							const canDeletePin = shanumanVaConfig.isAdmin || isAuthor;
+
+							// Detect if the pin itself is unread for the badge
+							const pinSeenBy = Array.isArray( pin.seen_by ) ? pin.seen_by : [];
+							const isPinUnread = !isAuthor && !pinSeenBy.includes( currentUserId ) && pin.status === 'saved';
+
+							let borderColor = primaryColor;
+							if ( isApproved ) borderColor = shanumanVaConfig.accentColor;
+							else if ( isReopened ) borderColor = shanumanVaConfig.reopenColor;
+							else if ( isPinUnread ) borderColor = alertColor; // Turn card border red if unread
+							else borderColor = shanumanVaConfig.buttonColor;
+
 							const isPosting = submittingReply[pin.id] || false;
 							const isFading = fadingOutId === pin.id;
 							
-							return wp.element.createElement( 'div', { key: pin.id, className: `shanuman-va-thread-item ${ isFading ? 'fade-out' : '' }`, style: { padding: '15px', borderLeft: `4px solid ${ threadBorderColor }`, background: '#f6f7f7', borderRadius: '0 4px 4px 0' } },
+							return wp.element.createElement( 'div', { key: pin.id, className: `shanuman-va-thread-item ${ isFading ? 'fade-out' : '' }`, style: { padding: '15px', borderLeft: `4px solid ${ borderColor }`, background: '#fcfcfc', borderRadius: '4px', border: '1px solid #e2e4e7', transition: 'border-color 0.3s ease' } },
 								wp.element.createElement( 'div', { className: 'shanuman-va-pin-header', style: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' } },
 									wp.element.createElement( 'div', { style: { fontSize: '13px', color: '#646970', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' } }, 
 										wp.element.createElement( 'strong', { style: { color: '#1d2327' } }, `Pin #${ pin.id }` ),
@@ -218,7 +259,17 @@
 										wp.element.createElement( 'span', null, pin.author_name || 'Reviewer' ),
 										wp.element.createElement( 'span', null, '\u2022' ),
 										wp.element.createElement( 'span', null, pin.date ),
+										
+										// New Feedback Badge
+										isPinUnread && wp.element.createElement( 'span', { 
+											title: 'Mark as read',
+											onMouseEnter: () => handlePinBadgeHover( pin.id, isPinUnread ),
+											style: { background: alertColor, color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', cursor: 'help', transition: 'background 0.3s ease' } 
+										}, 'New Feedback' ),
+										
+										// Orphan Warning Badge
 										pin.orphaned && wp.element.createElement( 'span', { style: { background: '#8c8f94', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' } }, 'Element Deleted' ),
+										
 										wp.element.createElement( FlagIcon, { isFlagged: pin.flagged, onClick: () => handleToggleFlag( pin.id ) } )
 									),
 									wp.element.createElement( 'div', { className: 'shanuman-va-pin-actions', style: { display: 'flex', gap: '10px' } },
@@ -228,10 +279,9 @@
 										canDelete && wp.element.createElement( 'button', { className: 'button button-link', style: { color: '#d63638', textDecoration: 'none', padding: 0 }, onClick: () => handleAction( pin.id, 'DELETE' ) }, 'Delete' )
 									)
 								),
-								wp.element.createElement( 'p', { style: { fontSize: '14px', marginTop: 0, color: '#2c3338' } }, pin.comment ),
-								pin.replies && pin.replies.length > 0 && wp.element.createElement( 'div', { style: { marginLeft: '10px', paddingLeft: '15px', borderLeft: `2px solid ${ threadBorderColor }`, marginTop: '15px' } },
+								wp.element.createElement( 'p', { style: { fontSize: '14px', marginTop: 0, color: '#2c3338', fontWeight: isPinUnread ? 'bold' : 'normal' } }, pin.comment ),
+								pin.replies && pin.replies.length > 0 && wp.element.createElement( 'div', { style: { marginLeft: '10px', paddingLeft: '15px', borderLeft: `2px solid ${ borderColor }`, marginTop: '15px' } },
 									pin.replies.map( r => {
-										const currentUserId = parseInt( shanumanVaConfig.currentUserId, 10 );
 										const isReplyAuthor = parseInt( r.user_id, 10 ) === currentUserId;
 										const canDeleteReply = isReplyAuthor || shanumanVaConfig.isAdmin;
 										const isEditing = editingReplyId === r.id;
@@ -274,4 +324,4 @@
 	const rootNode = document.getElementById( 'shanuman-va-admin-app' );
 	if ( rootNode ) wp.element.render( wp.element.createElement( AdminDashboard ), rootNode );
 
-} )( wp );
+} )( window.wp );

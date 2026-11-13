@@ -179,11 +179,19 @@
 		form.style.overflowY = 'auto';
 	}
 
-	function renderTemporaryPin( x, y, pinData ) {
+function renderTemporaryPin( x, y, pinData ) {
+		const currentUserId = parseInt( cfg.currentUserId, 10 );
+		const isPinAuthor   = parseInt( pinData.author_id, 10 ) === currentUserId;
+		const pinSeenBy     = Array.isArray( pinData.seen_by ) ? pinData.seen_by : [];
+		
+		// NEW: Determine if the parent pin itself is unread
+		const isPinUnread   = !isPinAuthor && !pinSeenBy.includes( currentUserId ) && pinData.status === 'saved';
+
 		let pinBgColor = primaryColor; 
 		let pinOutline = '2px solid #ffffff'; 
 
-		if ( pinData.status === 'draft' ) {
+		// NEW: Unread pins share the red draft color (attentionColor)
+		if ( pinData.status === 'draft' || isPinUnread ) {
 			pinBgColor = attentionColor;
 		} else if ( pinData.status === 'approved' ) {
 			pinBgColor = accentColor; 
@@ -194,12 +202,11 @@
 
 		const pin = document.createElement( 'div' );
 		pin.className = 'shanuman-va-pin';
-		pin.style.cssText = `position: absolute; left: ${Math.round(x - 12)}px; top: ${Math.round(y - 24)}px; width: 24px; height: 24px; background-color: ${pinBgColor}; border: ${pinOutline}; box-sizing: border-box; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); cursor: pointer; z-index: 999998; box-shadow: 2px -2px 4px rgba(0,0,0,0.2); display: ${isOverlayVisible ? 'block' : 'none'};`;
+		pin.style.cssText = `position: absolute; left: ${Math.round(x - 12)}px; top: ${Math.round(y - 24)}px; width: 24px; height: 24px; background-color: ${pinBgColor}; border: ${pinOutline}; box-sizing: border-box; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); cursor: pointer; z-index: 999998; box-shadow: 2px -2px 4px rgba(0,0,0,0.2); display: ${isOverlayVisible ? 'block' : 'none'}; transition: background-color 0.3s ease;`;
 
-		const currentUserId = parseInt( cfg.currentUserId, 10 );
-		const hasUnread = ( pinData.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) );
+		const hasUnreadReplies = ( pinData.replies || [] ).some( r => parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) );
 		
-		if ( hasUnread && pinData.status !== 'draft' ) {
+		if ( hasUnreadReplies && pinData.status !== 'draft' ) {
 			const unreadDot = document.createElement( 'div' );
 			unreadDot.className = 'shanuman-va-unread-dot';
 			unreadDot.style.cssText = `position: absolute; top: -4px; right: -4px; width: 10px; height: 10px; background-color: ${attentionColor}; border-radius: 50%; border: 2px solid #fff; transform: rotate(45deg);`;
@@ -211,7 +218,7 @@
 
 		const form = document.createElement( 'div' );
 		form.className = 'shanuman-va-pin-form';
-		form.style.cssText = `position: absolute; background-color: #ffffff; border: 1px solid ${pinBgColor}; box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 14px; border-radius: 6px; z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: ${baseFontSize}; display: ${(pinData.status === 'draft' && isOverlayVisible) ? 'block' : 'none'}; box-sizing: border-box;`;
+		form.style.cssText = `position: absolute; background-color: #ffffff; border: 1px solid ${pinBgColor}; box-shadow: 0 6px 20px rgba(0,0,0,0.25); padding: 14px; border-radius: 6px; z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: ${baseFontSize}; display: ${(pinData.status === 'draft' && isOverlayVisible) ? 'block' : 'none'}; box-sizing: border-box; transition: border-color 0.3s ease;`;
 		document.body.appendChild( form );
 		pinData.formNode = form;
 
@@ -427,6 +434,15 @@
 				document.querySelectorAll( '.shanuman-va-pin-form' ).forEach( f => f.style.display = 'none' );
 				if ( ! isVisible ) {
 					form.style.display = 'block';
+					
+					// NEW: Mark parent pin as read and turn blue instantly
+					if ( isPinUnread ) {
+						pinData.seen_by = [ ...pinSeenBy, currentUserId ];
+						pin.style.backgroundColor = primaryColor;
+						form.style.borderColor = primaryColor;
+						fetch( `${ cfg.restUrl }shanuman-va/v1/annotations/${ pinData.id }/seen`, { method: 'POST', headers: { 'X-WP-Nonce': cfg.nonce } } ).catch(()=>{});
+					}
+
 					if ( pinData.replies ) {
 						pinData.replies.forEach( r => {
 							if ( parseInt( r.user_id, 10 ) !== currentUserId && !( Array.isArray( r.seen_by ) ? r.seen_by : [] ).includes( currentUserId ) ) {

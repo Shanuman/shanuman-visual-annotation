@@ -269,6 +269,14 @@ class Shanuman_Visual_Annotation {
                 'permission_callback' => [ $this, 'api_permission_check' ],
             ],
         ] );
+		// Endpoint for marking the parent pin itself as seen
+		register_rest_route( $namespace, $route . '/(?P<id>\d+)/seen', [
+			[
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'mark_pin_seen' ],
+				'permission_callback' => [ $this, 'api_permission_check' ],
+			],
+		] );
 
         do_action( 'shanuman_va_register_rest_routes', $namespace, $route, $this );
     }
@@ -304,35 +312,36 @@ class Shanuman_Visual_Annotation {
         $annotations = get_posts( $args );
         $data        = [];
 
-        foreach ( $annotations as $post ) {
-            $replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
-            $author  = get_userdata( $post->post_author );
+		foreach ( $annotations as $post ) {
+			$replies = get_post_meta( $post->ID, '_shanuman_va_replies', true ) ?: [];
+			$author  = get_userdata( $post->post_author );
 
-            $guest_name = get_post_meta( $post->ID, '_shanuman_va_guest_name', true );
-            if ( empty( $guest_name ) ) {
-                $guest_name = 'Guest Reviewer';
-            }
+			$guest_name = get_post_meta( $post->ID, '_shanuman_va_guest_name', true );
+			if ( empty( $guest_name ) ) {
+				$guest_name = 'Guest Reviewer';
+			}
 
-            $author_name = $author ? $author->display_name : ( get_post_meta( $post->ID, '_shanuman_va_guest_name', true ) ?: 'Guest Reviewer' );
+			$author_name = $author ? $author->display_name : ( get_post_meta( $post->ID, '_shanuman_va_guest_name', true ) ?: 'Guest Reviewer' );
 
-            $item = [
-                'id'          => $post->ID,
-                'author_id'   => (int) $post->post_author,
-                'author_name' => $author_name,
-                'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
-                'comment'     => $post->post_content,
-                'replies'     => $replies,
-                'xpath'       => get_post_meta( $post->ID, '_shanuman_va_target_xpath', true ),
-                'percentX'    => get_post_meta( $post->ID, '_shanuman_va_rel_x', true ),
-                'percentY'    => get_post_meta( $post->ID, '_shanuman_va_rel_y', true ),
-                'url'         => get_post_meta( $post->ID, '_shanuman_va_url', true ),
-                'page_title'  => get_post_meta( $post->ID, '_shanuman_va_page_title', true ),
-                'status'      => get_post_meta( $post->ID, '_shanuman_va_status', true ),
-                'flagged'     => get_post_meta( $post->ID, '_shanuman_va_flagged', true ) === 'true',
-            ];
+			$item = [
+				'id'          => $post->ID,
+				'author_id'   => (int) $post->post_author,
+				'author_name' => $author_name,
+				'date'        => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date ),
+				'comment'     => $post->post_content,
+				'replies'     => $replies,
+				'seen_by'     => get_post_meta( $post->ID, '_shanuman_va_seen_by', true ) ?: [], // <-- NEW
+				'xpath'       => get_post_meta( $post->ID, '_shanuman_va_target_xpath', true ),
+				'percentX'    => get_post_meta( $post->ID, '_shanuman_va_rel_x', true ),
+				'percentY'    => get_post_meta( $post->ID, '_shanuman_va_rel_y', true ),
+				'url'         => get_post_meta( $post->ID, '_shanuman_va_url', true ),
+				'page_title'  => get_post_meta( $post->ID, '_shanuman_va_page_title', true ),
+				'status'      => get_post_meta( $post->ID, '_shanuman_va_status', true ),
+				'flagged'     => get_post_meta( $post->ID, '_shanuman_va_flagged', true ) === 'true',
+			];
 
-            $data[] = apply_filters( 'shanuman_va_annotation_response_item', $item, $post );
-        }
+			$data[] = apply_filters( 'shanuman_va_annotation_response_item', $item, $post );
+		}
 
         return rest_ensure_response( $data );
     }
@@ -364,6 +373,7 @@ class Shanuman_Visual_Annotation {
         update_post_meta( $post_id, '_shanuman_va_page_title', $page_title );
         update_post_meta( $post_id, '_shanuman_va_status', 'saved' );
         update_post_meta( $post_id, '_shanuman_va_flagged', 'false' );
+		update_post_meta( $post_id, '_shanuman_va_seen_by', [ get_current_user_id() ] ); // NEW
 
         do_action( 'shanuman_va_after_create_annotation', $post_id, $request );
 
@@ -468,6 +478,22 @@ class Shanuman_Visual_Annotation {
 
         update_post_meta( $pin_id, '_shanuman_va_replies', $updated_replies );
         return rest_ensure_response( [ 'success' => true, 'replies' => $updated_replies ] );
+    }
+	
+	public function mark_pin_seen( $request ) {
+        $pin_id  = (int) $request->get_param( 'id' );
+        $user_id = get_current_user_id();
+        $seen_by = get_post_meta( $pin_id, '_shanuman_va_seen_by', true ) ?: [];
+        
+        if ( ! is_array( $seen_by ) ) {
+            $seen_by = [];
+        }
+        
+        if ( ! in_array( $user_id, $seen_by, true ) ) {
+            $seen_by[] = $user_id;
+            update_post_meta( $pin_id, '_shanuman_va_seen_by', $seen_by );
+        }
+        return rest_ensure_response( [ 'success' => true ] );
     }
 
     public function mark_reply_seen( $request ) {
