@@ -137,6 +137,7 @@ class Shanuman_Visual_Annotation {
                 </div>
             <?php endif; ?>
 
+		<?php if ( current_user_can( 'manage_options' ) ) : ?>
             <hr style="margin: 40px 0 20px 0;" />
             <h2>Danger Zone / Reset Plugin</h2>
             <form method="post" action="" onsubmit="return confirm('Are you absolutely sure you want to wipe all annotation records and logs? This cannot be undone.');">
@@ -144,6 +145,7 @@ class Shanuman_Visual_Annotation {
                 <input type="hidden" name="shanuman_va_reset_plugin_submit" value="true" />
                 <?php submit_button( 'Delete All Data & Reset Plugin', 'delete', 'shanuman_va_reset_btn', false ); ?>
             </form>
+        <?php endif; ?>
         </div>
         <?php
     }
