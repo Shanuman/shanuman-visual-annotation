@@ -3,7 +3,7 @@ Contributors: shanuman
 Tags: visual feedback, annotation, client feedback, website review, bug tracker
 Requires at least: 5.8
 Tested up to: 7.1
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -55,6 +55,10 @@ Yes! The annotation overlay and toolbars are fully responsive and work seamlessl
 3. An active threaded discussion on a specific webpage element.
 
 == Changelog ==
+
+= 1.0.5 =
+* Pin deep linking
+* Add ESC keyboard shorcut to close window
 
 = 1.0.4 =
 * Remove client's ability to reset plugin

@@ -3,7 +3,7 @@
  * Plugin Name: Shanuman Visual Annotation
  * Plugin URI: https://wordpress.org/plugins/shanuman-visual-annotation/
  * Description: A lightweight visual feedback and annotation tool for WordPress.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Author: Shanuman
  * Author URI:
  * Text Domain: shanuman-visual-annotation
@@ -583,7 +583,7 @@ class Shanuman_Visual_Annotation {
         }
         // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.2', true );
+        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.5', true );
 
         $frontend_config = apply_filters( 'shanuman_va_frontend_config', [
             'restUrl'        => esc_url_raw( rest_url() ),
