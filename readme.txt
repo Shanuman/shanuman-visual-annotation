@@ -56,11 +56,8 @@ Yes! The annotation overlay and toolbars are fully responsive and work seamlessl
 
 == Changelog ==
 
-= 1.0.5 =
-* Remove client's ability to reset plugin
-* Modified alert to unread items to include new comments instead of just unread replies.
-
 = 1.0.4 =
+* Remove client's ability to reset plugin
 * Added lost pin warning if element is deleted.
 * Modified alert to unread items to include new comments instead of just unread replies.
 
