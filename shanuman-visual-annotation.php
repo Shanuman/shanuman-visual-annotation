@@ -583,7 +583,7 @@ class Shanuman_Visual_Annotation {
         }
         // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.5', true );
+        wp_enqueue_script( 'shanuman-va-frontend', plugin_dir_url( __FILE__ ) . 'assets/js/frontend-overlay.js', [], '1.0.6', true );
 
         $frontend_config = apply_filters( 'shanuman_va_frontend_config', [
             'restUrl'        => esc_url_raw( rest_url() ),

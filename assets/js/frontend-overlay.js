@@ -229,8 +229,35 @@
 
 		form.style.left = `${ Math.round( left ) }px`;
 		form.style.top = `${ Math.round( top ) }px`;
-		form.style.maxHeight = `${ formHeight }px`;
+		form.style.maxHeight = `${ viewportHeight - 20 }px`;
 		form.style.overflowY = 'auto';
+	}
+
+	function repositionFormForPin( pinData ) {
+		if ( ! pinData || ! pinData.element || ! pinData.formNode || pinData.formNode.style.display !== 'block' ) {
+			return;
+		}
+		const r = pinData.element.getBoundingClientRect();
+		const absX = r.left + window.scrollX + ( r.width * ( parseFloat( pinData.percentX ) / 100 ) );
+		const absY = r.top + window.scrollY + ( r.height * ( parseFloat( pinData.percentY ) / 100 ) );
+		updateFormPosition( pinData.formNode, absX, absY );
+	}
+
+	function bindAutoGrow( textarea, pinData ) {
+		if ( ! textarea ) {
+			return;
+		}
+		const resize = () => {
+			if ( textarea.offsetParent === null ) {
+				return;
+			}
+			textarea.style.height = 'auto';
+			textarea.style.height = `${ Math.max( textarea.scrollHeight, 44 ) }px`;
+			repositionFormForPin( pinData );
+		};
+		textarea.style.overflowY = 'hidden';
+		textarea.addEventListener( 'input', resize );
+		resize();
 	}
 
 	function exitAnnotatingMode() {
@@ -346,6 +373,9 @@
 			e.stopPropagation();
 		} );
 
+		document.body.appendChild( pin );
+		document.body.appendChild( form );
+
 		pinData.domNode = pin;
 		pinData.formNode = form;
 
@@ -383,7 +413,7 @@
 				`;
 
 				if ( Array.isArray( pinData.replies ) && pinData.replies.length > 0 ) {
-					html += `<div class="shanuman-va-replies-list" style="margin-left: 6px; border-left: 2px solid ${ isApproved ? accentColor : primaryColor }; padding-left: 10px; margin-bottom: 10px; max-height: 200px; overflow-y: auto;">`;
+					html += `<div class="shanuman-va-replies-list" style="margin-left: 6px; border-left: 2px solid ${ isApproved ? accentColor : primaryColor }; padding-left: 10px; margin-bottom: 10px;">`;
 
 					pinData.replies.forEach( ( r ) => {
 						const isReplyAuthor = currentUserId > 0 && currentUserId === parseInt( r.user_id, 10 );
@@ -405,7 +435,7 @@
 						if ( isEditing ) {
 							html += `
 								<div style="margin-top: 6px;">
-									<textarea class="shanuman-va-edit-reply-input" data-id="${ escapeHtml( r.id ) }" rows="2" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid ${ primaryColor }; border-radius: 4px; resize: vertical;">${ escapeHtml( r.content ) }</textarea>
+									<textarea class="shanuman-va-edit-reply-input" data-id="${ escapeHtml( r.id ) }" rows="2" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px; border: 1px solid ${ primaryColor }; border-radius: 4px; resize: none;">${ escapeHtml( r.content ) }</textarea>
 									<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
 										<button type="button" class="shanuman-va-btn-cancel-reply-edit" style="background: #f0f0f1; color: #2c3338; border: 1px solid #8c8f94; padding: 4px 8px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Cancel</button>
 										<button type="button" class="shanuman-va-btn-save-reply-edit" data-id="${ escapeHtml( r.id ) }" style="background: ${ primaryColor }; color: #ffffff; border: none; padding: 4px 10px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Save</button>
@@ -424,7 +454,7 @@
 
 				html += `
 					<div style="margin-top: 8px;">
-						<textarea class="shanuman-va-reply-input" placeholder="Write a reply... (Ctrl+Enter to post)" rows="2" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px 8px; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea>
+						<textarea class="shanuman-va-reply-input" placeholder="Write a reply... (Ctrl+Enter to post)" rows="2" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px 8px; border: 1px solid #8c8f94; border-radius: 4px; resize: none;"></textarea>
 						<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
 							<button type="button" class="shanuman-va-submit-reply" style="background: ${ primaryColor }; color: #ffffff; border: none; padding: 5px 12px; border-radius: 3px; font-size: ${ smallFontSize }; font-weight: bold; cursor: pointer;">Reply</button>
 						</div>
@@ -489,10 +519,13 @@
 							headers: { 'X-WP-Nonce': cfg.nonce },
 						} )
 							.then( () => {
+								isMutating = false;
 								loadExistingPins( false );
 							} )
-							.finally( () => {
+							.catch( () => {
 								isMutating = false;
+								approveBtn.disabled = false;
+								approveBtn.textContent = 'Approve';
 							} );
 					} );
 				}
@@ -510,10 +543,13 @@
 							headers: { 'X-WP-Nonce': cfg.nonce },
 						} )
 							.then( () => {
+								isMutating = false;
 								loadExistingPins( false );
 							} )
-							.finally( () => {
+							.catch( () => {
 								isMutating = false;
+								reopenBtn.disabled = false;
+								reopenBtn.textContent = 'Reopen';
 							} );
 					} );
 				}
@@ -664,6 +700,12 @@
 							} );
 					} );
 				}
+
+				bindAutoGrow( replyTextarea, pinData );
+				form.querySelectorAll( '.shanuman-va-edit-reply-input' ).forEach( ( editInput ) => {
+					bindAutoGrow( editInput, pinData );
+				} );
+				repositionFormForPin( pinData );
 			};
 
 			renderThreadContent();
@@ -677,11 +719,7 @@
 				if ( ! isVisible ) {
 					form.style.display = 'block';
 					markPinAndRepliesSeen( pinData, pin );
-
-					const r = pinData.element.getBoundingClientRect();
-					const absX = r.left + window.scrollX + ( r.width * ( parseFloat( pinData.percentX ) / 100 ) );
-					const absY = r.top + window.scrollY + ( r.height * ( parseFloat( pinData.percentY ) / 100 ) );
-					updateFormPosition( form, absX, absY );
+					repositionFormForPin( pinData );
 					showHighlight( pinData.element );
 				} else {
 					hideHighlight();
@@ -690,7 +728,7 @@
 		} else {
 			form.innerHTML = `
 				<div style="font-weight: bold; margin-bottom: 6px; font-size: ${ baseFontSize };">New Feedback</div>
-				<textarea class="shanuman-va-new-comment" placeholder="Add your comment or suggestion..." rows="3" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px 8px; border: 1px solid #8c8f94; border-radius: 4px; resize: vertical;"></textarea>
+				<textarea class="shanuman-va-new-comment" placeholder="Add your comment or suggestion..." rows="3" style="width: 100%; box-sizing: border-box; font-size: ${ baseFontSize }; padding: 6px 8px; border: 1px solid #8c8f94; border-radius: 4px; resize: none;"></textarea>
 				<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;">
 					<button type="button" class="shanuman-va-btn-cancel" style="background: #f0f0f1; color: #2c3338; border: 1px solid #8c8f94; padding: 5px 10px; border-radius: 3px; font-size: ${ smallFontSize }; cursor: pointer;">Cancel</button>
 					<button type="button" class="shanuman-va-btn-save" style="background: ${ primaryColor }; color: #ffffff; border: none; padding: 5px 12px; border-radius: 3px; font-size: ${ smallFontSize }; font-weight: bold; cursor: pointer;">Save</button>
@@ -700,6 +738,8 @@
 			const saveBtn = form.querySelector( '.shanuman-va-btn-save' );
 			const cancelBtn = form.querySelector( '.shanuman-va-btn-cancel' );
 			const textarea = form.querySelector( '.shanuman-va-new-comment' );
+
+			bindAutoGrow( textarea, pinData );
 
 			cancelBtn.addEventListener( 'click', ( e ) => {
 				e.preventDefault();
@@ -748,27 +788,22 @@
 						if ( idx > -1 ) {
 							activePins.splice( idx, 1 );
 						}
+						isMutating = false;
 						loadExistingPins( false );
 					} )
 					.catch( () => {
+						isMutating = false;
 						saveBtn.disabled = false;
 						saveBtn.textContent = 'Save';
-					} )
-					.finally( () => {
-						isMutating = false;
 					} );
 			} );
-		}
 
-		document.body.appendChild( pin );
-		document.body.appendChild( form );
-		if ( pinData.status === 'draft' ) {
 			updateFormPosition( form, x, y );
-			const input = form.querySelector( '.shanuman-va-new-comment' );
-			if ( input ) {
-				input.focus();
+			if ( textarea ) {
+				textarea.focus();
 			}
 		}
+
 		return pin;
 	}
 
@@ -997,7 +1032,7 @@
 		dimBtn.addEventListener( 'click', ( e ) => {
 			e.stopPropagation();
 			toggleDimBackdrop( ! isDimBackgroundActive );
-			dimBtn.textContent = isDimBackgroundActive ? 'Undim Background' : 'Dim Background';
+			dimBtn.textContent = isDimBackgroundActive ? 'Remove Dimming' : 'Dim Background';
 			dimBtn.style.backgroundColor = isDimBackgroundActive ? primaryColor : '#1d2327';
 		} );
 

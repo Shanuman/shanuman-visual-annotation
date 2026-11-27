@@ -57,8 +57,12 @@ Yes! The annotation overlay and toolbars are fully responsive and work seamlessl
 == Changelog ==
 
 = 1.0.5 =
-* Pin deep linking
-* Add ESC keyboard shorcut to close window
+* Added direct deep-link pin opening (`?shanuman_va_open_pin=ID`) with viewport centering, element highlighting, automatic read marking, and URL cleanup.
+* Added a one-click **Copy Link** button to frontend pin headers for sharing direct links to specific threads.
+* Added keyboard shortcut ergonomics: `Esc` to exit commenting mode or close open forms/dimming, and `Ctrl/Cmd + Enter` to submit new comments, replies, and inline reply edits.
+* Added live auto-growing textareas and real-time viewport repositioning while typing or posting replies.
+* Restricted the **Danger Zone / Reset Plugin** section in the admin dashboard to Administrators (`manage_options`).
+* Fixed an issue where newly saved, approved, or reopened pins required a page refresh to re-render immediately..
 
 = 1.0.4 =
 * Remove client's ability to reset plugin
