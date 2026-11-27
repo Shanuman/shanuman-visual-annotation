@@ -3,7 +3,7 @@ Contributors: shanuman
 Tags: visual feedback, annotation, client feedback, website review, bug tracker
 Requires at least: 5.8
 Tested up to: 7.1
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -56,20 +56,24 @@ Yes! The annotation overlay and toolbars are fully responsive and work seamlessl
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial public release.
+= 1.0.5 =
+* Remove client's ability to reset plugin
+* Modified alert to unread items to include new comments instead of just unread replies.
 
-= 1.0.1 =
-* Minor bug fixes.
-
-= 1.0.2 =
-* Minor bug fixes.
-* Make front-end form element responsive.
+= 1.0.4 =
+* Added lost pin warning if element is deleted.
+* Modified alert to unread items to include new comments instead of just unread replies.
 
 = 1.0.3 =
 * Minor bug fixes.
 * Added font-size injection from pro add-on.
 
-= 1.0.4 =
-* Added lost pin warning if element is deleted.
-* Modified alert to unread items to include new comments instead of just unread replies.
+= 1.0.2 =
+* Minor bug fixes.
+* Make front-end form element responsive.
+
+= 1.0.1 =
+* Minor bug fixes.
+
+= 1.0.0 =
+* Initial public release.

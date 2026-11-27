@@ -3,7 +3,7 @@
  * Plugin Name: Shanuman Visual Annotation
  * Plugin URI: https://wordpress.org/plugins/shanuman-visual-annotation/
  * Description: A lightweight visual feedback and annotation tool for WordPress.
- * Version: 1.0.4
+ * Version: 1.0.5
  * Author: Shanuman
  * Author URI:
  * Text Domain: shanuman-visual-annotation
